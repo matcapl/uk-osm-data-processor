@@ -3,6 +3,9 @@ data/raw/*.pbf
 data/raw/*.md5
 data/raw/*.osm
 data/raw/*.xml
+data/samples/*.xml
+data/samples/*.pbf
+data/samples/*.osm
 data/processed/
 *.sqlite
 *.db
