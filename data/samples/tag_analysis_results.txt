@@ -1,0 +1,106 @@
+
+=== Analysis of shops_sample.xml ===
+Object counts: {'node': 300}
+Total unique keys: 143
+  name: 209 unique values, sample: ['Furniture Village', 'Foxton Post Office', 'Top555']
+  addr:postcode: 144 unique values, sample: ['PE3 8DE', 'PE37 7AQ', 'DL12 0QG']
+  addr:street: 132 unique values, sample: ['High Street', 'Richmond Road', 'Kettering Road']
+  fhrs:id: 100 unique values, sample: ['1473410', '593190', '60443']
+  addr:housenumber: 97 unique values, sample: ['35', '7-11', '23']
+  website: 85 unique values, sample: ['https://www.miawood.co.uk/our-shops/kew/', 'https://www.budgens.co.uk/our-stores/bedford-lane', 'https://www.dippleconway.co.uk/swaffham-opticians/']
+  addr:city: 78 unique values, sample: ['Ramsgate', 'Stowmarket', 'Edinburgh']
+  brand: 71 unique values, sample: ['Furniture Village', 'Post Office', 'Central Convenience Store']
+  brand:wikidata: 67 unique values, sample: ['Q5045782', 'Q55931', 'Q714491']
+  shop: 66 unique values, sample: ['second_hand', 'gift', 'massage']
+  opening_hours: 57 unique values, sample: ['Mo-Su 06:00-22:00', '07:00-23:00', 'Mo-Sa 09:00-17:00']
+  brand:wikipedia: 45 unique values, sample: ['en:Tesco Extra', 'en:Spar (retailer)', 'en:Sue Ryder (charity)']
+  contact:website: 36 unique values, sample: ['https://www.tesco.com/store-locator/blackburn/71-73-bank-top', 'https://storelocator.asda.com/north-west/crewe/victoria-centre', 'https://www.iceland.co.uk/store-finder/store?StoreID=1220&StoreName=HAROLD%20HILL%20%28NEW%29']
+  operator: 34 unique values, sample: ['Furniture Village', 'The Co-operative Group', 'The Southern Co-operative']
+  check_date: 31 unique values, sample: ['2025-09-15', '2022-06-27', '2007-10']
+
+=== Analysis of amenities_sample.xml ===
+Object counts: {'node': 500}
+Total unique keys: 29
+  barrier: 4 unique values, sample: ['gate', 'lift_gate', 'bollard']
+  highway: 2 unique values, sample: ['crossing', 'mini_roundabout']
+  entrance: 2 unique values, sample: ['main', 'yes']
+  amenity: 2 unique values, sample: ['ferry_terminal', 'parking_entrance']
+  crossing: 2 unique values, sample: ['traffic_signals', 'uncontrolled']
+  direction: 1 unique values, sample: ['clockwise']
+  building: 1 unique values, sample: ['yes']
+  name: 1 unique values, sample: ['Djanogly Learning Resource Centre']
+  bicycle: 1 unique values, sample: ['yes']
+  foot: 1 unique values, sample: ['yes']
+  horse: 1 unique values, sample: ['yes']
+  motor_vehicle: 1 unique values, sample: ['no']
+  access: 1 unique values, sample: ['private']
+  maxheight: 1 unique values, sample: ['2']
+  maxwidth: 1 unique values, sample: ['4']
+
+=== Analysis of buildings_sample.xml ===
+Object counts: {'node': 500}
+Total unique keys: 22
+  name: 4 unique values, sample: ['Life Conference & Banqueting', "St George's Cross", 'Leytonstone']
+  entrance: 3 unique values, sample: ['main', 'emergency', 'yes']
+  amenity: 3 unique values, sample: ['conference_centre', 'parking_entrance', 'parking_exit']
+  source: 3 unique values, sample: ['PGS', 'survey', 'Bing']
+  highway: 1 unique values, sample: ['motorway_junction']
+  ref: 1 unique values, sample: ['17']
+  building: 1 unique values, sample: ['yes']
+  barrier: 1 unique values, sample: ['lift_gate']
+  addr:city: 1 unique values, sample: ['Newcastle upon Tyne']
+  addr:postcode: 1 unique values, sample: ['NE1 4EP']
+  addr:street: 1 unique values, sample: ['Times Square']
+  check_date: 1 unique values, sample: ['2024-05-05']
+  fhrs:id: 1 unique values, sample: ['236520']
+  website: 1 unique values, sample: ['https://meetingsandevents.life.org.uk/']
+  network: 1 unique values, sample: ['London Underground']
+
+=== Analysis of tourism_sample.xml ===
+Object counts: {'node': 200}
+Total unique keys: 52
+  name: 24 unique values, sample: ['Newmillerdam', 'Blackdown western viewpoint', 'Stourhead Gardens']
+  tourism: 8 unique values, sample: ['information', 'camp_site', 'viewpoint']
+  ele: 5 unique values, sample: ['190', '229', '50']
+  crossing:island: 3 unique values, sample: ['no', 'yes', 'separate']
+  highway: 3 unique values, sample: ['motorway_junction', 'crossing', 'traffic_signals']
+  wheelchair: 3 unique values, sample: ['yes', 'no', 'limited']
+  created_by: 3 unique values, sample: ['Potlatch 0.5a', 'Potlatch 0.4a', 'osmeditor2']
+  addr:city: 3 unique values, sample: ['Burley', 'Warminster', 'Southampton']
+  addr:postcode: 3 unique values, sample: ['BA12 6QD', 'BH24 4BB', 'SO40 7AA']
+  addr:street: 3 unique values, sample: ['Lyndhurst Road', 'Beaulieu Road', 'Cott Lane']
+  bicycle: 2 unique values, sample: ['no', 'yes']
+  crossing:markings: 2 unique values, sample: ['dots', 'dashes']
+  crossing_ref: 2 unique values, sample: ['toucan', 'pelican']
+  source: 2 unique values, sample: ['visual survey;estimate', 'Bing']
+  tactile_paving: 2 unique values, sample: ['no', 'yes']
+
+=== Analysis of industrial_sample.xml ===
+Object counts: {'node': 100}
+Total unique keys: 5
+  barrier: 1 unique values, sample: ['gate']
+  direction: 1 unique values, sample: ['clockwise']
+  highway: 1 unique values, sample: ['mini_roundabout']
+  source: 1 unique values, sample: ['bing']
+  created_by: 1 unique values, sample: ['JOSM']
+
+=== Analysis of landuse_sample.xml ===
+Object counts: {'node': 300}
+Total unique keys: 13
+  barrier: 5 unique values, sample: ['cattle_grid', 'cycle_barrier', 'kissing_gate']
+  highway: 3 unique values, sample: ['mini_roundabout', 'crossing', 'traffic_signals']
+  ref:GB:tflcid: 1 unique values, sample: ['RWG064614']
+  traffic_calming: 1 unique values, sample: ['table']
+  direction: 1 unique values, sample: ['clockwise']
+  source: 1 unique values, sample: ['survey']
+  bicycle: 1 unique values, sample: ['yes']
+  foot: 1 unique values, sample: ['yes']
+  crossing:island: 1 unique values, sample: ['no']
+  crossing:markings: 1 unique values, sample: ['no']
+  crossing:signals: 1 unique values, sample: ['no']
+  tactile_paving: 1 unique values, sample: ['no']
+  created_by: 1 unique values, sample: ['osmeditor2']
+
+=== SUMMARY ===
+Total unique keys across all samples: 189
+All keys found: ['access', 'access:delivery', 'addr:city', 'addr:country', 'addr:county', 'addr:district', 'addr:floor', 'addr:hamlet', 'addr:housename', 'addr:housenumber', 'addr:place', 'addr:postcode', 'addr:street', 'addr:suburb', 'addr:town', 'addr:unit', 'addr:village', 'alt_name', 'amenity', 'atm', 'barrier', 'bicycle', 'bicycle:repair', 'board_type', 'branch', 'branch_name', 'brand', 'brand:short', 'brand:website', 'brand:wikidata', 'brand:wikipedia', 'building', 'building:levels', 'button_operated', 'capacity', 'cash_in', 'check_date', 'check_date:opening_hours', 'clothes', 'communication:amateur_radio:sota', 'communication:amateur_radio:sota:points', 'compressed_air', 'contact:facebook', 'contact:instagram', 'contact:phone', 'contact:twitter', 'contact:website', 'created_by', 'crossing', 'crossing:island', 'crossing:markings', 'crossing:signals', 'crossing_ref', 'cuisine', 'currency:GBP', 'deaf:description:en', 'deaf:description:fr', 'description', 'designation', 'diet:halal', 'direction', 'dispensing', 'disused:shop', 'drive_through', 'ele', 'email', 'entrance', 'facebook', 'fee', 'female:signed', 'fhrs:authority', 'fhrs:confidence_management', 'fhrs:hygiene', 'fhrs:id', 'fhrs:local_authority_id', 'fhrs:rating', 'fhrs:structural', 'fixme', 'foot', 'fuel:cng', 'fuel:diesel', 'fuel:lpg', 'fuel:octane_95', 'fuel:octane_98', 'fuel:unleaded', 'hairdresser', 'healthcare', 'height', 'highway', 'hiking', 'historic', 'horse', 'information', 'inscription', 'is_in', 'kerb', 'layer', 'level', 'lift_gate:type', 'loc_name', 'locked', 'male', 'male:signed', 'material', 'maxheight', 'maxwidth', 'memorial', 'mot', 'motor_vehicle', 'motorcar', 'motorcycle', 'name', 'name:cy', 'name:fa', 'name:ja', 'name:ru', 'natural', 'network', 'not:addr:postcode', 'not:brand', 'note', 'odbl', 'official_name', 'old_name', 'old_name_1', 'old_name_2', 'opening_hours', 'opening_hours:covid19', 'opening_hours:post_office', 'opening_hours:signed', 'operator', 'operator:website', 'operator:wikidata', 'parking', 'pay_point', 'payment:american_express', 'payment:cards', 'payment:cash', 'payment:contactless', 'payment:credit_cards', 'payment:debit_cards', 'payment:mastercard', 'payment:qr_code', 'payment:visa', 'paypoint', 'phone', 'place', 'post_office', 'postal_code', 'public_transport', 'railway', 'ref', 'ref:GB:tflcid', 'ref:asda', 'ref:navads', 'ref:pol_id', 'ref:vatin', 'second_hand', 'service:bicycle:dealer', 'service:bicycle:ebike', 'service:bicycle:electric_bikes', 'service:bicycle:repair', 'service:bicycle:retail', 'shop', 'source', 'source:addr', 'source:addr:postcode', 'source:name', 'source:opening_hours', 'source:opening_hours:post_office', 'source:postcode', 'start_date', 'stroller', 'subway', 'survey:date', 'tactile_paving', 'takeaway', 'toilets', 'toilets:wheelchair', 'tourism', 'traffic_calming', 'upload_tag', 'url', 'website', 'wheelchair', 'wheelchair:description', 'width', 'wikidata', 'wikipedia']
