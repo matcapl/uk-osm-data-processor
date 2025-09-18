@@ -1,0 +1,24 @@
+# UK OSM Data Processor Configuration
+
+database:
+  name: uk_osm_full
+  user: ukosm_user
+  password: ""  # Leave empty for peer authentication
+  host: localhost
+  port: 5432
+  schema: osm_raw
+
+download:
+  source_url: https://download.geofabrik.de/europe/great-britain-latest.osm.pbf
+  checksum_url: https://download.geofabrik.de/europe/great-britain-latest.osm.pbf.md5
+  data_dir: ./data/raw
+  
+import:
+  cache_size_mb: 2048
+  num_processes: 4
+  style_file: ./config/uk_full_retention.style
+  
+system:
+  min_free_space_gb: 100
+  temp_dir: ./tmp
+  log_level: INFO
