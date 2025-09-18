@@ -161,7 +161,7 @@ def main():
     # Create tag analysis script (unchanged)
     tag_analysis_script = samples_dir / 'analyze_tags.py'
     with open(tag_analysis_script, 'w') as f:
-        f.write(\"\"\"#!/usr/bin/env python3
+        f.write("""#!/usr/bin/env python3
 import xml.etree.ElementTree as ET
 import collections
 import sys
@@ -183,26 +183,26 @@ def analyze_tags(xml_file):
                     value = tag.get('v')
                     all_tags[key].add(value)
         
-        print(f\"\\n=== Analysis of {xml_file} ===\")
-        print(f\"Object counts: {dict(object_counts)}\")
-        print(f\"Total unique keys: {len(all_tags)}\")
-        print(f\"\\nTop 15 most common keys:\")
+        print(f"\\n=== Analysis of {xml_file} ===")
+        print(f"Object counts: {dict(object_counts)}")
+        print(f"Total unique keys: {len(all_tags)}")
+        print(f"\\nTop 15 most common keys:")
         
         key_counts = {k: len(v) for k, v in all_tags.items()}
         sorted_keys = sorted(key_counts.items(), key=lambda x: x[1], reverse=True)
         
         for key, count in sorted_keys[:15]:
-            print(f\"  {key}: {count} unique values\")
+            print(f"  {key}: {count} unique values")
             sample_values = list(all_tags[key])[:3]
-            print(f\"    Sample values: {sample_values}\")
+            print(f"    Sample values: {sample_values}")
         
         return all_tags, object_counts
         
     except Exception as e:
-        print(f\"Error analyzing {xml_file}: {e}\")
+        print(f"Error analyzing {xml_file}: {e}")
         return {}, {}
 
-if __name__ == \"__main__\":
+if __name__ == "__main__":
     samples_dir = Path('.')
     all_keys = set()
     
@@ -210,10 +210,10 @@ if __name__ == \"__main__\":
         tags, counts = analyze_tags(xml_file)
         all_keys.update(tags.keys())
     
-    print(f\"\\n=== SUMMARY ===\")
-    print(f\"Total unique keys across all samples: {len(all_keys)}\")
-    print(f\"\\nAll keys found: {sorted(list(all_keys))}\")
-\"\"\")
+    print(f"\\n=== SUMMARY ===")
+    print(f"Total unique keys across all samples: {len(all_keys)}")
+    print(f"\\nAll keys found: {sorted(list(all_keys))}")
+""")
 
     # Run tag analysis (only if any XML samples exist)
     logging.info("Running tag analysis...")
