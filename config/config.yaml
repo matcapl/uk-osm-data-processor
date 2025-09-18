@@ -19,6 +19,6 @@ import:
   style_file: ./config/uk_full_retention.style
   
 system:
-  min_free_space_gb: 100
+  min_free_space_gb: 90
   temp_dir: ./tmp
   log_level: INFO
