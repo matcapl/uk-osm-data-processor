@@ -1,5 +1,6 @@
 # Data files
 data/raw/*.pbf
+data/raw/*.md5
 data/raw/*.osm
 data/raw/*.xml
 data/processed/

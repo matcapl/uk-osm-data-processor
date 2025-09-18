@@ -1,0 +1,132 @@
+# OSM2PGSQL Style File for Complete UK Data Retention
+# Ensures maximum data preservation during import
+
+# Way tags - comprehensive coverage
+way   access        text     linear
+way   addr:city     text     linear
+way   addr:country  text     linear
+way   addr:housenumber text  linear
+way   addr:postcode text     linear
+way   addr:street   text     linear
+way   addr:state    text     linear
+way   addr:suburb   text     linear
+way   admin_level   text     linear
+way   aerialway     text     linear
+way   aeroway       text     linear
+way   amenity       text     linear
+way   area          text     linear
+way   barrier       text     linear
+way   bicycle       text     linear
+way   boundary      text     linear
+way   brand         text     linear
+way   bridge        text     linear
+way   building      text     linear
+way   building:levels text   linear
+way   building:use  text     linear
+way   bus           text     linear
+way   construction  text     linear
+way   covered       text     linear
+way   cuisine       text     linear
+way   cutting       text     linear
+way   denomination  text     linear
+way   disused       text     linear
+way   embankment    text     linear
+way   foot          text     linear
+way   generator:source text  linear
+way   harbour       text     linear
+way   highway       text     linear
+way   historic      text     linear
+way   horse         text     linear
+way   industrial    text     linear
+way   junction      text     linear
+way   landuse       text     linear
+way   layer         text     linear
+way   leisure       text     linear
+way   lock          text     linear
+way   man_made      text     linear
+way   military      text     linear
+way   motorcar      text     linear
+way   name          text     linear
+way   name:en       text     linear
+way   natural       text     linear
+way   office        text     linear
+way   oneway        text     linear
+way   operator      text     linear
+way   place         text     linear
+way   population    text     linear
+way   power         text     linear
+way   power_source  text     linear
+way   public_transport text  linear
+way   railway       text     linear
+way   ref           text     linear
+way   religion      text     linear
+way   route         text     linear
+way   service       text     linear
+way   shop          text     linear
+way   sport         text     linear
+way   surface       text     linear
+way   toll          text     linear
+way   tourism       text     linear
+way   tracktype     text     linear
+way   tunnel        text     linear
+way   water         text     linear
+way   waterway      text     linear
+way   website       text     linear
+way   wetland       text     linear
+way   wheelchair    text     linear
+way   width         text     linear
+way   wood          text     linear
+way   z_order       int4     linear
+
+# Point tags - for nodes (POIs)
+node  addr:city     text     
+node  addr:country  text     
+node  addr:housenumber text  
+node  addr:postcode text     
+node  addr:street   text     
+node  aerialway     text     
+node  aeroway       text     
+node  amenity       text     
+node  barrier       text     
+node  bicycle       text     
+node  brand         text     
+node  bus           text     
+node  construction  text     
+node  covered       text     
+node  cuisine       text     
+node  denomination  text     
+node  disused       text     
+node  ele           text     
+node  emergency     text     
+node  entrance      text     
+node  foot          text     
+node  generator:source text  
+node  harbour       text     
+node  highway       text     
+node  historic      text     
+node  horse         text     
+node  information   text     
+node  junction      text     
+node  landuse       text     
+node  leisure       text     
+node  man_made      text     
+node  military      text     
+node  name          text     
+node  name:en       text     
+node  natural       text     
+node  office        text     
+node  operator      text     
+node  place         text     
+node  population    text     
+node  power         text     
+node  public_transport text  
+node  railway       text     
+node  ref           text     
+node  religion      text     
+node  shop          text     
+node  sport         text     
+node  surface       text     
+node  tourism       text     
+node  waterway      text     
+node  website       text     
+node  wheelchair    text     

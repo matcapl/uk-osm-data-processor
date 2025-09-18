@@ -1,0 +1,44 @@
+File:
+  Name: data/raw/great-britain-latest.osm.pbf
+  Format: PBF
+  Compression: none
+  Size: 1996599904
+Header:
+  Bounding boxes:
+    (-15.336777,49.523003,2.513672,61.92858)
+  With history: no
+  Options:
+    generator=osmium/1.14.0
+    osmosis_replication_base_url=https://download.geofabrik.de/europe/great-britain-updates
+    osmosis_replication_sequence_number=4542
+    osmosis_replication_timestamp=2025-09-17T20:20:56Z
+    pbf_dense_nodes=true
+    pbf_optional_feature_0=Sort.Type_then_ID
+    sorting=Type_then_ID
+    timestamp=2025-09-17T20:20:56Z
+Data:
+  Bounding box: (-74.0188194,35.5004,16.8530164,76.2059697)
+  Timestamps:
+    First: 2005-05-25T22:31:30Z
+    Last: 2025-09-17T20:20:19Z
+  Objects ordered (by type and id): yes
+  Multiple versions of same object: no
+  CRC32: not calculated (use --crc/-c to enable)
+  Number of changesets: 0
+  Number of nodes: 217734155
+  Number of ways: 31861388
+  Number of relations: 281612
+  Smallest changeset ID: 0
+  Smallest node ID: 129
+  Smallest way ID: 37
+  Smallest relation ID: 11
+  Largest changeset ID: 0
+  Largest node ID: 13151529141
+  Largest way ID: 1430709716
+  Largest relation ID: 19614222
+  Number of buffers: 337911 (avg 739 objects per buffer)
+  Sum of buffer sizes: 21070683240 (20.094 GB)
+  Sum of buffer capacities: 22155034624 (21.128 GB, 95% full)
+Metadata:
+  All objects have following metadata attributes: version+timestamp
+  Some objects have following metadata attributes: version+timestamp
