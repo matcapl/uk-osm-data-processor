@@ -15,108 +15,7 @@ NC='\033[0m'
 
 echo -e "${BLUE}=== UK OSM Import Automation - Phase 5: Data Import ===${NC}"
 
-# Create or update the style file if missing
-STYLE_FILE="config/uk_full_retention.style"
-if [ ! -f "$STYLE_FILE" ]; then
-    echo -e "${YELLOW}Creating missing style file: $STYLE_FILE${NC}"
-    cat > "$STYLE_FILE" << 'EOF'
-# OSM2PGSQL Style File for Full UK Data Retention
-# This style file ensures maximum data retention
-
-# Way tags - comprehensive list for all data types
-way   access        text     linear
-way   addr:city     text     linear
-way   addr:country  text     linear
-way   addr:housenumber text  linear
-way   addr:postcode text     linear
-way   addr:street   text     linear
-way   admin_level   text     linear
-way   amenity       text     linear
-way   area          text     linear  # Import area=yes/no
-way   barrier       text     linear
-way   bicycle       text     linear
-way   boundary      text     linear
-way   bridge        text     linear
-way   building      text     linear
-way   building:levels text   linear
-way   building:use  text     linear
-way   commercial    text     linear
-way   construction  text     linear
-way   covered       text     linear
-way   cuisine       text     linear
-way   description   text     linear
-way   ele           text     linear
-way   emergency     text     linear
-way   foot          text     linear
-way   highway       text     linear
-way   historic      text     linear
-way   horse         text     linear
-way   industrial    text     linear
-way   landuse       text     linear
-way   layer         text     linear
-way   leisure       text     linear
-way   man_made      text     linear
-way   military      text     linear
-way   name          text     linear
-way   name:en       text     linear
-way   natural       text     linear
-way   office        text     linear
-way   oneway        text     linear
-way   operator      text     linear
-way   place         text     linear
-way   power         text     linear
-way   public_transport text  linear
-way   railway       text     linear
-way   ref           text     linear
-way   religion      text     linear
-way   residential   text     linear
-way   route         text     linear
-way   service       text     linear
-way   shop          text     linear
-way   surface       text     linear
-way   tourism       text     linear
-way   tracktype     text     linear
-way   tunnel        text     linear
-way   water         text     linear
-way   waterway      text     linear
-way   website       text     linear
-way   wheelchair    text     linear
-way   width         text     linear
-way   z_order       int4     linear # Internal OSM2PGSQL field
-
-# Point tags - for nodes
-node  addr:city     text     
-node  addr:country  text     
-node  addr:housenumber text  
-node  addr:postcode text     
-node  addr:street   text     
-node  amenity       text     
-node  barrier       text     
-node  emergency     text     
-node  highway       text     
-node  historic      text     
-node  landuse       text     
-node  leisure       text     
-node  man_made      text     
-node  name          text     
-node  name:en       text     
-node  natural       text     
-node  office        text     
-node  place         text     
-node  power         text     
-node  public_transport text  
-node  railway       text     
-node  ref           text     
-node  religion      text     
-node  shop          text     
-node  tourism       text     
-node  waterway      text     
-node  website       text     
-node  wheelchair    text     
-EOF
-fi
-
-# Create the main import script (completed version)
+# Create the main import script
 cat > scripts/import/import_osm_data.py << 'EOF'
 #!/usr/bin/env python3
 """
@@ -133,8 +32,6 @@ sys.path.append('scripts/utils')
 from osm_utils import setup_logging, load_config, run_command, check_disk_space
 import logging
 from pathlib import Path
-import psycopg2
-from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 
 def check_prerequisites(config):
     """Check all prerequisites for import."""
@@ -156,13 +53,14 @@ def check_prerequisites(config):
     # Check required commands
     required_commands = ['osm2pgsql', 'psql']
     for cmd in required_commands:
-        if not subprocess.run(['which', cmd], capture_output=True).returncode == 0:
+        if not subprocess.shutil.which(cmd):
             logging.error(f"Required command not found: {cmd}")
             return False
     
     # Check database connectivity
     db_config = config['database']
     try:
+        import psycopg2
         conn = psycopg2.connect(
             host=db_config['host'],
             port=db_config['port'],
@@ -205,25 +103,18 @@ def build_osm2pgsql_command(config):
     osm_file = data_dir / 'great-britain-latest.osm.pbf'
     style_file = Path(config['import']['style_file'])
     
-    # Dynamic adjustments based on system
-    import platform
-    total_ram_gb = int(subprocess.run(["free", "-g"], capture_output=True, text=True).stdout.splitlines()[1].split()[1]) if platform.system() == "Linux" else 8
-    cache_size = min(config['import']['cache_size_mb'], total_ram_gb * 512)  # Cap cache at 0.5GB per GB RAM
-    num_processes = min(config['import']['num_processes'], os.cpu_count() or 4)
-    
-    # Base command
     cmd_parts = [
         'osm2pgsql',
         '--create',
         '--slim',
-        f"--cache {cache_size}",
-        f"--number-processes {num_processes}",
+        f"--cache {config['import']['cache_size_mb']}",
+        f"--number-processes {config['import']['num_processes']}",
         '--hstore',
         '--hstore-all',
         '--extra-attributes',
         '--keep-coastlines',
         f"--database {config['database']['name']}",
-        f"--username {config['database'].get('user', 'postgres')}",
+        f"--username {config['database'].get('user', 'a')}",
         '--prefix planet_osm',
         f"--style {style_file}",
         '--proj 3857',
@@ -235,110 +126,320 @@ def build_osm2pgsql_command(config):
     
     return ' '.join(cmd_parts)
 
-def perform_import(config, env):
-    """Execute the data import."""
+def monitor_import_progress():
+    """Monitor import progress by watching log output."""
+    import threading
+    import queue
+    
+    # This would be enhanced with actual progress monitoring
+    # For now, just indicate that monitoring is active
+    logging.info("Import progress monitoring active...")
+    
+def run_import(config):
+    """Execute the main import process."""
     logging.info("Starting OSM data import...")
+    
     start_time = time.time()
     
-    cmd = build_osm2pgsql_command(config)
+    # Prepare environment
+    env = prepare_import_environment(config)
+    
+    # Build command
+    import_cmd = build_osm2pgsql_command(config)
+    logging.info(f"Import command: {import_cmd}")
+    
+    # Show resource usage before import
     try:
-        result = subprocess.run(cmd, shell=True, env=env, check=True, capture_output=False)
-        duration = (time.time() - start_time) / 60
-        logging.info(f"✓ Import completed in {duration:.2f} minutes")
-        return True
-    except subprocess.CalledProcessError as e:
-        logging.error(f"osm2pgsql import failed: {e.stderr}")
+        import psutil
+        cpu_count = psutil.cpu_count()
+        memory_gb = psutil.virtual_memory().total / (1024**3)
+        disk_free_gb = psutil.disk_usage('.').free / (1024**3)
+        
+        logging.info(f"System resources: {cpu_count} CPUs, {memory_gb:.1f}GB RAM, {disk_free_gb:.1f}GB free disk")
+    except ImportError:
+        logging.info("psutil not available for resource monitoring")
+    
+    # Execute import
+    try:
+        # Start progress monitoring
+        monitor_thread = threading.Thread(target=monitor_import_progress)
+        monitor_thread.daemon = True
+        monitor_thread.start()
+        
+        # Run the import command
+        result = subprocess.run(
+            import_cmd,
+            shell=True,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            universal_newlines=True
+        )
+        
+        # Log output
+        if result.stdout:
+            for line in result.stdout.split('\n'):
+                if line.strip():
+                    logging.info(f"osm2pgsql: {line}")
+        
+        if result.returncode == 0:
+            elapsed_time = time.time() - start_time
+            logging.info(f"✓ Import completed successfully in {elapsed_time/3600:.1f} hours")
+            return True
+        else:
+            logging.error(f"Import failed with return code: {result.returncode}")
+            return False
+            
+    except Exception as e:
+        logging.error(f"Import execution failed: {e}")
         return False
 
-def fallback_ogr2ogr_import(config):
-    """Fallback import using ogr2ogr if osm2pgsql fails."""
-    logging.warning("Attempting fallback import with ogr2ogr...")
-    
-    data_dir = Path(config['download']['data_dir'])
-    osm_file = data_dir / 'great-britain-latest.osm.pbf'
-    temp_sqlite = data_dir / 'uk_temp.sqlite'
-    
-    # Convert to SQLite
-    run_command(f"ogr2ogr -f SQLite {temp_sqlite} {osm_file}")
-    
-    # List layers and import each without indexes
-    layers = ['points', 'lines', 'multipolygons', 'multilinestrings', 'other_relations']
-    db_config = config['database']
-    pg_conn_str = f"PG:\"host={db_config['host']} user={db_config.get('user', 'postgres')} dbname={db_config['name']} active_schema={db_config.get('schema', 'osm_raw')}\""
-    
-    for layer in layers:
-        run_command(f"ogr2ogr -f PostgreSQL {pg_conn_str} {temp_sqlite} {layer} -nln {layer}_raw -lco SPATIAL_INDEX=NO --config PG_USE_COPY YES -overwrite")
-    
-    # Clean up
-    temp_sqlite.unlink(missing_ok=True)
-    logging.info("✓ Fallback import completed")
-    return True
-
-def post_import_cleanup(config):
-    """Cleanup and re-enable database settings post-import."""
+def cleanup_post_import(config):
+    """Clean up after import and re-enable normal database operations."""
     logging.info("Performing post-import cleanup...")
     
     db_config = config['database']
+    
     try:
+        import psycopg2
         conn = psycopg2.connect(
             host=db_config['host'],
             port=db_config['port'],
-            user=db_config.get('user', 'postgres'),
+            user=db_config.get('user', 'a'),
             database=db_config['name']
         )
-        conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
         cur = conn.cursor()
         
         # Re-enable autovacuum
-        cur.execute(f"ALTER DATABASE {db_config['name']} SET autovacuum = on")
-        logging.info("✓ Re-enabled autovacuum")
+        cur.execute("ALTER DATABASE %s SET autovacuum = on", (db_config['name'],))
         
-        # Run vacuum analyze
-        cur.execute("VACUUM ANALYZE")
-        logging.info("✓ Ran VACUUM ANALYZE")
+        # Get basic statistics
+        tables = ['planet_osm_point', 'planet_osm_line', 'planet_osm_polygon', 'planet_osm_roads']
+        total_records = 0
         
+        for table in tables:
+            try:
+                cur.execute(f"SELECT count(*) FROM {db_config['schema']}.{table}")
+                count = cur.fetchone()[0]
+                total_records += count
+                logging.info(f"  {table}: {count:,} records")
+            except Exception as e:
+                logging.warning(f"Could not count {table}: {e}")
+        
+        logging.info(f"Total records imported: {total_records:,}")
+        
+        # Get database size
+        cur.execute("SELECT pg_size_pretty(pg_database_size(%s))", (db_config['name'],))
+        db_size = cur.fetchone()[0]
+        logging.info(f"Database size: {db_size}")
+        
+        conn.commit()
         cur.close()
         conn.close()
+        
+        return True
+        
     except Exception as e:
-        logging.warning(f"Post-import cleanup partial failure: {e}")
+        logging.error(f"Post-import cleanup failed: {e}")
+        return False
 
 def main():
     setup_logging()
     config = load_config()
     
+    logging.info("=== UK OSM Data Import Process ===")
+    
+    # Check prerequisites
     if not check_prerequisites(config):
-        sys.exit(1)
+        return False
     
-    env = prepare_import_environment(config)
+    # Confirm with user before starting
+    data_dir = Path(config['download']['data_dir'])
+    osm_file = data_dir / 'great-britain-latest.osm.pbf'
+    file_size_mb = osm_file.stat().st_size / (1024*1024)
     
-    if not perform_import(config, env):
-        logging.warning("Primary import failed - trying fallback...")
-        if not fallback_ogr2ogr_import(config):
-            sys.exit(1)
+    logging.info(f"Ready to import: {osm_file} ({file_size_mb:.1f} MB)")
+    logging.info(f"Import settings: {config['import']['cache_size_mb']}MB cache, {config['import']['num_processes']} processes")
     
-    post_import_cleanup(config)
+    print("\n" + "="*60)
+    print("READY TO START IMPORT")
+    print("="*60)
+    print(f"Data file: {osm_file}")
+    print(f"File size: {file_size_mb:.1f} MB")
+    print(f"Database: {config['database']['name']}")
+    print(f"Estimated time: 2-6 hours")
+    print(f"No indexes will be created (for speed and space)")
+    print("="*60)
     
-    logging.info("Data import process completed successfully!")
-    sys.exit(0)
+    response = input("\nProceed with import? (yes/no): ").lower().strip()
+    if response not in ['yes', 'y']:
+        logging.info("Import cancelled by user")
+        return False
+    
+    # Run import
+    if not run_import(config):
+        return False
+    
+    # Cleanup
+    if not cleanup_post_import(config):
+        logging.warning("Post-import cleanup had issues, but import completed")
+    
+    logging.info("=== Import Process Complete ===")
+    return True
 
 if __name__ == "__main__":
-    main()
+    success = main()
+    sys.exit(0 if success else 1)
 EOF
 
-# Make the Python script executable
-chmod +x scripts/import/import_osm_data.py
+# Create alternative import method using ogr2ogr (fallback)
+cat > scripts/import/import_with_ogr2ogr.py << 'EOF'
+#!/usr/bin/env python3
+"""
+Alternative OSM Import using ogr2ogr
+Fallback method if osm2pgsql has issues
+"""
 
-# Run the import
-echo -e "${YELLOW}Running data import...${NC}"
-read -p "Proceed with import? This may take 2-6 hours and use significant resources (Y/n): " PROCEED
-if [[ $PROCEED != "n" && $PROCEED != "N" ]]; then
-    if command -v uv &> /dev/null; then
-        uv run scripts/import/import_osm_data.py
-    else
-        python3 scripts/import/import_osm_data.py
+import sys
+import os
+sys.path.append('scripts/utils')
+
+from osm_utils import setup_logging, load_config, run_command
+import logging
+from pathlib import Path
+
+def main():
+    setup_logging()
+    config = load_config()
+    
+    logging.info("=== Alternative Import Method using ogr2ogr ===")
+    
+    data_dir = Path(config['download']['data_dir'])
+    osm_file = data_dir / 'great-britain-latest.osm.pbf'
+    
+    if not osm_file.exists():
+        logging.error(f"OSM file not found: {osm_file}")
+        return False
+    
+    # Convert PBF to temporary SQLite first
+    temp_sqlite = data_dir / 'uk_temp.sqlite'
+    logging.info("Converting PBF to SQLite...")
+    
+    try:
+        cmd = f'ogr2ogr -f SQLite "{temp_sqlite}" "{osm_file}"'
+        run_command(cmd)
+        logging.info("✓ Conversion to SQLite completed")
+    except Exception as e:
+        logging.error(f"PBF to SQLite conversion failed: {e}")
+        return False
+    
+    # List available layers
+    try:
+        result = run_command(f'ogrinfo "{temp_sqlite}"')
+        logging.info("Available layers:")
+        for line in result.stdout.split('\n'):
+            if line.startswith('  '):
+                logging.info(f"  {line.strip()}")
+    except Exception as e:
+        logging.warning(f"Could not list layers: {e}")
+    
+    # Import each layer to PostgreSQL
+    db_config = config['database']
+    pg_conn_str = f"PG:host={db_config['host']} user={db_config['user']} dbname={db_config['name']} active_schema={db_config['schema']}"
+    
+    layers = ['points', 'lines', 'multipolygons', 'multilinestrings', 'other_relations']
+    
+    for layer in layers:
+        try:
+            logging.info(f"Importing layer: {layer}")
+            cmd = f'''ogr2ogr -f PostgreSQL "{pg_conn_str}" "{temp_sqlite}" {layer} \
+                -nln {layer}_raw \
+                -lco SPATIAL_INDEX=NO \
+                -lco CREATE_SCHEMA=NO \
+                --config PG_USE_COPY YES \
+                -overwrite'''
+            
+            run_command(cmd)
+            logging.info(f"✓ Layer {layer} imported")
+            
+        except Exception as e:
+            logging.warning(f"Could not import layer {layer}: {e}")
+    
+    # Cleanup
+    if temp_sqlite.exists():
+        temp_sqlite.unlink()
+        logging.info("✓ Temporary SQLite file cleaned up")
+    
+    logging.info("=== Alternative import completed ===")
+    return True
+
+if __name__ == "__main__":
+    success = main()
+    sys.exit(0 if success else 1)
+EOF
+
+# Make scripts executable
+chmod +x scripts/import/import_osm_data.py
+chmod +x scripts/import/import_with_ogr2ogr.py
+
+# Main import execution
+echo -e "${YELLOW}Checking OSM data file...${NC}"
+if [ ! -f "data/raw/great-britain-latest.osm.pbf" ]; then
+    echo -e "${RED}OSM data file not found!${NC}"
+    echo -e "${YELLOW}Please run ./03_download_data.sh first${NC}"
+    exit 1
+fi
+
+echo -e "${YELLOW}Checking database connection...${NC}"
+if ! psql -h localhost -U a -d uk_osm_full -c "SELECT version();" >/dev/null 2>&1; then
+    echo -e "${RED}Cannot connect to database!${NC}"
+    echo -e "${YELLOW}Please run ./04_setup_database.sh first${NC}"
+    exit 1
+fi
+
+# Check available space one more time
+echo -e "${YELLOW}Checking available disk space...${NC}"
+AVAILABLE_SPACE_GB=$(df -BG . | tail -1 | awk '{print $4}' | sed 's/G//')
+if [[ $AVAILABLE_SPACE_GB -lt 50 ]]; then
+    echo -e "${RED}Warning: Less than 50GB available space!${NC}"
+    echo -e "${YELLOW}Import may fail due to insufficient space${NC}"
+    read -p "Continue anyway? (y/N): " CONTINUE_ANYWAY
+    if [[ $CONTINUE_ANYWAY != "y" && $CONTINUE_ANYWAY != "Y" ]]; then
+        exit 1
     fi
-    echo -e "${GREEN}=== Phase 5 Complete: Data Imported ===${NC}"
+fi
+
+echo -e "${GREEN}All prerequisites met!${NC}"
+echo -e "${BLUE}=== Starting Import Process ===${NC}"
+
+# Run the main import
+if command -v uv &> /dev/null; then
+    uv run scripts/import/import_osm_data.py
+else
+    python3 scripts/import/import_osm_data.py
+fi
+
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}=== Phase 5 Complete: Data Import Successful ===${NC}"
     echo -e "${YELLOW}Next step: Run ./06_verify_import.sh${NC}"
 else
-    echo -e "${YELLOW}Import skipped. Run this script again when ready.${NC}"
+    echo -e "${RED}=== Import Failed ===${NC}"
+    echo -e "${YELLOW}Trying alternative import method...${NC}"
+    
+    if command -v uv &> /dev/null; then
+        uv run scripts/import/import_with_ogr2ogr.py
+    else
+        python3 scripts/import/import_with_ogr2ogr.py
+    fi
+    
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✓ Alternative import method succeeded${NC}"
+        echo -e "${YELLOW}Next step: Run ./06_verify_import.sh${NC}"
+    else
+        echo -e "${RED}✗ Both import methods failed${NC}"
+        echo -e "${YELLOW}Check logs/osm_processor.log for details${NC}"
+        echo -e "${YELLOW}You may need to adjust cache settings or try manual import${NC}"
+    fi
 fi

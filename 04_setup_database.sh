@@ -4,6 +4,13 @@
 # File: 04_setup_database.sh
 # ========================================
 
+# NOTE: To make this work:
+# 1. Generated optimized postgresql.conf and restarted PostgreSQL manually.
+# 2. Commented out temporary import optimization block in Python script.
+# 3. Database and schema created via Python; manual SQL import not needed.
+# 4. Verified PostGIS extensions and geometry test succeeded.
+
+
 set -e
 
 # Colors for output
@@ -31,16 +38,22 @@ import logging
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 
+def get_current_user():
+    """Get current system user."""
+    import getpass
+    return getpass.getuser()
+
 def create_database_user(config):
     """Create database user if it doesn't exist."""
     db_config = config['database']
+    current_user = get_current_user()
     
     try:
-        # Connect as postgres user to create new user
+        # On macOS with Homebrew PostgreSQL, connect as current user who has superuser privileges
         conn = psycopg2.connect(
             host=db_config['host'],
             port=db_config['port'],
-            user='postgres',
+            user=current_user,
             database='postgres'
         )
         conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
@@ -59,21 +72,44 @@ def create_database_user(config):
         return True
         
     except Exception as e:
-        logging.warning(f"Could not create user (may need manual setup): {e}")
-        return False
+        # Try with the target user directly (may already exist with permissions)
+        try:
+            conn = psycopg2.connect(
+                host=db_config['host'],
+                port=db_config['port'],
+                user=db_config['user'],
+                database='postgres'
+            )
+            conn.close()
+            logging.info(f"User {db_config['user']} already has access")
+            return True
+        except:
+            logging.warning(f"Could not create user (may need manual setup): {e}")
+            return False
 
 def create_database(config):
     """Create the main database."""
     db_config = config['database']
+    current_user = get_current_user()
     
     try:
-        # Connect as postgres user to create database
-        conn = psycopg2.connect(
-            host=db_config['host'],
-            port=db_config['port'],
-            user='postgres',
-            database='postgres'
-        )
+        # Try to connect as current user first (macOS default)
+        try:
+            conn = psycopg2.connect(
+                host=db_config['host'],
+                port=db_config['port'],
+                user=current_user,
+                database='postgres'
+            )
+        except:
+            # Fallback to target user
+            conn = psycopg2.connect(
+                host=db_config['host'],
+                port=db_config['port'],
+                user=db_config['user'],
+                database='postgres'
+            )
+        
         conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
         cur = conn.cursor()
         
@@ -81,10 +117,7 @@ def create_database(config):
         cur.execute("SELECT 1 FROM pg_database WHERE datname = %s", (db_config['name'],))
         if not cur.fetchone():
             logging.info(f"Creating database: {db_config['name']}")
-            if db_config['user'] != 'postgres':
-                cur.execute(f"CREATE DATABASE {db_config['name']} OWNER {db_config['user']}")
-            else:
-                cur.execute(f"CREATE DATABASE {db_config['name']}")
+            cur.execute(f"CREATE DATABASE {db_config['name']} OWNER {db_config['user']}")
         else:
             logging.info(f"Database {db_config['name']} already exists")
         
@@ -179,26 +212,26 @@ def optimize_for_import(config):
         logging.info("Optimizing database for import...")
         
         # Temporary settings for import performance
-        optimization_settings = [
-            "SET maintenance_work_mem = '2GB'",
-            "SET work_mem = '256MB'",
-            "SET synchronous_commit = off",
-            "SET full_page_writes = off",
-            "SET checkpoint_completion_target = 0.9",
-            "SET wal_buffers = '16MB'",
-            "SET random_page_cost = 1.1"
-        ]
-        
-        for setting in optimization_settings:
-            try:
-                cur.execute(setting)
-                logging.info(f"Applied: {setting}")
-            except Exception as e:
-                logging.warning(f"Could not apply setting {setting}: {e}")
+        # optimization_settings = [
+        #    "SET maintenance_work_mem = '2GB'",
+        #    "SET work_mem = '256MB'",
+        #    "SET synchronous_commit = off",
+        #    "SET full_page_writes = off",
+        #    "SET checkpoint_completion_target = 0.9",
+        #    "SET wal_buffers = '16MB'",
+        #    "SET random_page_cost = 1.1"
+        # ]
+        #
+        # for setting in optimization_settings:
+        #    try:
+        #        cur.execute(setting)
+        #        logging.info(f"Applied: {setting}")
+        #    except Exception as e:
+        #        logging.warning(f"Could not apply setting {setting}: {e}")
         
         # Disable autovacuum for target database during import
-        cur.execute("ALTER DATABASE %s SET autovacuum = off", (db_config['name'],))
-        logging.info("Disabled autovacuum for import")
+        # cur.execute(f'ALTER DATABASE "{db_config["name"]}" SET autovacuum = off')
+        # logging.info("Disabled autovacuum for import")
         
         conn.commit()
         cur.close()
@@ -375,20 +408,22 @@ autovacuum_naptime = 30s
 def find_postgresql_config():
     """Find PostgreSQL configuration file location."""
     try:
-        # Try to find config through PostgreSQL
-        result = run_command("sudo -u postgres psql -c 'SHOW config_file;' -t")
+        # Try to find config through PostgreSQL (macOS approach)
+        result = run_command("psql -c 'SHOW config_file;' -t postgres")
         config_path = result.stdout.strip()
         if os.path.exists(config_path):
             return config_path
     except:
         pass
     
-    # Common locations
+    # Common macOS locations (prioritized for macOS)
     common_paths = [
-        '/etc/postgresql/*/main/postgresql.conf',
-        '/var/lib/pgsql/data/postgresql.conf',
-        '/usr/local/var/postgres/postgresql.conf',
-        '/opt/homebrew/var/postgres/postgresql.conf'
+        '/opt/homebrew/var/postgres/postgresql.conf',  # Apple Silicon Homebrew
+        '/usr/local/var/postgres/postgresql.conf',     # Intel Homebrew
+        '/opt/homebrew/var/postgresql@*/postgresql.conf',  # Specific versions
+        '/usr/local/var/postgresql@*/postgresql.conf',
+        '/etc/postgresql/*/main/postgresql.conf',      # Linux fallback
+        '/var/lib/pgsql/data/postgresql.conf'          # Linux fallback
     ]
     
     import glob
@@ -457,14 +492,14 @@ chmod +x scripts/import/optimize_postgresql.py
 
 # Create SQL file for manual database setup (fallback)
 cat > sql/manual_database_setup.sql << 'EOF'
--- Manual Database Setup for UK OSM Import
+-- Manual Database Setup for UK OSM Import (macOS)
 -- Run these commands if automated setup fails
 
--- Create user (run as postgres superuser)
-CREATE USER ukosm_user WITH CREATEDB;
+-- Create user (run as current user with superuser privileges)
+CREATE USER a WITH CREATEDB;
 
 -- Create database
-CREATE DATABASE uk_osm_full OWNER ukosm_user;
+CREATE DATABASE uk_osm_full OWNER a;
 
 -- Connect to the new database
 \c uk_osm_full
@@ -505,14 +540,16 @@ EOF
 echo -e "${YELLOW}Starting PostgreSQL/PostGIS database setup...${NC}"
 
 # Check if PostgreSQL is running
-if ! systemctl is-active --quiet postgresql 2>/dev/null && ! pgrep -x postgres >/dev/null; then
+if ! pgrep -x postgres >/dev/null && ! brew services list | grep postgresql | grep started >/dev/null; then
     echo -e "${YELLOW}PostgreSQL doesn't appear to be running. Attempting to start...${NC}"
     
-    # Try different methods to start PostgreSQL
-    if command -v systemctl >/dev/null; then
+    # Try different methods to start PostgreSQL (macOS focused)
+    if command -v brew >/dev/null; then
+        brew services start postgresql || echo "Could not start with brew services"
+    elif command -v systemctl >/dev/null; then
         sudo systemctl start postgresql || echo "Could not start with systemctl"
-    elif command -v brew >/dev/null; then
-        brew services start postgresql || echo "Could not start with brew"
+    else
+        echo -e "${YELLOW}Please start PostgreSQL manually${NC}"
     fi
     
     sleep 3
@@ -531,6 +568,8 @@ read -p "Do you want to apply PostgreSQL optimizations now? This requires sudo a
 
 if [[ $APPLY_OPTIMIZATIONS == "y" || $APPLY_OPTIMIZATIONS == "Y" ]]; then
     echo -e "${YELLOW}Please follow the instructions above to apply PostgreSQL optimizations.${NC}"
+    echo -e "${YELLOW}On macOS, you may need to restart PostgreSQL with:${NC}"
+    echo -e "${BLUE}brew services restart postgresql${NC}"
     echo -e "${YELLOW}Press Enter when ready to continue with database setup...${NC}"
     read
 fi
@@ -561,7 +600,7 @@ else
     echo -e "${YELLOW}Trying manual setup...${NC}"
     
     echo -e "${YELLOW}Please run the following SQL commands manually:${NC}"
-    echo -e "${BLUE}sudo -u postgres psql -f sql/manual_database_setup.sql${NC}"
+    echo -e "${BLUE}psql -f sql/manual_database_setup.sql postgres${NC}"
     echo ""
     echo -e "${YELLOW}Or connect to PostgreSQL and run commands from:${NC}"
     echo -e "${BLUE}sql/manual_database_setup.sql${NC}"
