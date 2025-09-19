@@ -1,0 +1,80 @@
+UK OSM Data Import Verification Report
+==================================================
+
+Generated: 2025-09-19 15:00:15
+Database: uk_osm_full
+Schema: public
+
+RECORD COUNTS
+--------------------
+planet_osm_point         : 285,167
+planet_osm_line          : 547,691
+planet_osm_polygon       : 5,237
+planet_osm_roads         : 19,748
+total                    : 857,843
+
+DATABASE STATISTICS
+-------------------------
+Total size: 850 MB
+Indexes: 17
+Constraints: 5
+
+Table Sizes:
+  planet_osm_point         : 104 MB
+  planet_osm_line          : 296 MB
+  planet_osm_polygon       : 5512 kB
+  planet_osm_roads         : 15 MB
+
+TOP AMENITIES
+---------------
+bicycle_parking     : 11,344
+bench               : 8,534
+waste_basket        : 3,529
+restaurant          : 2,756
+cafe                : 2,005
+post_box            : 1,890
+fast_food           : 1,543
+telephone           : 1,321
+atm                 : 704
+recycling           : 679
+
+TOP BUILDING TYPES
+--------------------
+apartments          : 224
+residential         : 123
+school              : 87
+commercial          : 43
+hospital            : 23
+university          : 21
+house               : 20
+terrace             : 18
+dormitory           : 13
+office              : 12
+
+TOP LAND USE TYPES
+--------------------
+residential         : 106
+grass               : 58
+construction        : 16
+retail              : 11
+railway             : 11
+commercial          : 9
+animal_enclosure    : 9
+forest              : 8
+industrial          : 8
+recreation_ground   : 6
+
+SAMPLE QUERY RESULTS
+-------------------------
+Amenities near Manchester:
+  Results: 0
+  Execution time: 0.02s
+
+Buildings in Central London:
+  Results: 10
+  Execution time: 0.0s
+
+Major roads in UK:
+  Results: 4
+  Execution time: 0.04s
+
