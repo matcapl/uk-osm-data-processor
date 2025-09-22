@@ -4,6 +4,8 @@
 # File: 06_verify_import.sh
 # ========================================
 
+# Changed config/config.yaml schema from osm_raw to public
+
 set -e
 
 # Colors for output
