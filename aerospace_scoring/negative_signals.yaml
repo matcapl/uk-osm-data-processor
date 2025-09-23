@@ -1,0 +1,51 @@
+# File: aerospace_scoring/negative_signals.yaml
+# Negative indicators that reduce aerospace supplier likelihood
+
+negative_signals:
+  # Strong negative indicators (major score reductions)
+  strong_negatives:
+    weight: -50
+    conditions:
+      - amenity: ['restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'fuel', 'hospital', 'school']
+      - shop: ['*']  # Any retail shop
+      - tourism: ['*']  # Any tourism feature
+      - leisure: ['*']  # Any leisure facility
+      - building: ['house', 'apartments', 'residential', 'hotel', 'retail']
+
+  # Medium negative indicators
+  medium_negatives:
+    weight: -25
+    conditions:
+      - landuse: ['residential', 'retail', 'commercial', 'farmland']
+      - name_contains: ['restaurant', 'cafe', 'pub', 'hotel', 'school', 'church', 'farm']
+
+  # Weak negative indicators (minor reductions)
+  weak_negatives:
+    weight: -10
+    conditions:
+      - building: ['barn', 'shed', 'garage', 'cabin']
+      - landuse: ['grass', 'meadow', 'forest']
+
+  # Service sector indicators (not manufacturing)
+  service_negatives:
+    weight: -15
+    conditions:
+      - office: ['insurance', 'finance', 'estate_agent', 'lawyer', 'accountant']
+      - amenity: ['bank', 'post_office', 'library']
+
+# Context-aware negatives (depend on other features)
+contextual_negatives:
+  # Small buildings with consumer-oriented names
+  small_consumer:
+    weight: -30
+    conditions:
+      - building_area: '<500'  # Small buildings
+      - name_contains: ['shop', 'store', 'market', 'centre', 'services']
+  
+  # Large areas that are clearly non-industrial
+  large_non_industrial:
+    weight: -40
+    conditions:
+      - way_area: '>50000'  # Large areas
+      - landuse: ['residential', 'commercial', 'retail']
+

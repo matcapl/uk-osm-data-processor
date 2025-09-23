@@ -1,0 +1,70 @@
+# File: aerospace_scoring/thresholds.yaml
+# Scoring thresholds and classification rules
+
+thresholds:
+  # Score ranges for classification
+  classification:
+    tier1_candidate:
+      min_score: 150
+      description: "Highly likely aerospace supplier - direct aerospace indicators"
+      
+    tier2_candidate:
+      min_score: 80
+      max_score: 149
+      description: "Strong aerospace supplier candidate - manufacturing + aerospace keywords"
+      
+    potential_candidate:
+      min_score: 40
+      max_score: 79
+      description: "Possible supplier - industrial with some relevant indicators"
+      
+    low_probability:
+      min_score: 10
+      max_score: 39
+      description: "Low probability - basic industrial classification only"
+      
+    excluded:
+      max_score: 9
+      description: "Not aerospace relevant"
+
+  # Minimum requirements (must meet ALL to be considered)
+  minimum_requirements:
+    # Must have basic identification
+    has_name: true
+    
+    # Must not be purely residential/consumer
+    not_residential: true
+    
+    # Must have some industrial/commercial indicators
+    has_industrial_indicator: true
+    
+    # Minimum size for buildings (square meters)
+    min_building_area: 50
+    
+    # Geographic constraints
+    in_uk: true
+
+  # Quality filters
+  quality_filters:
+    # Prefer records with contact information
+    contact_bonus: 10  # Extra points for website, phone, etc.
+    
+    # Prefer records with detailed descriptions
+    description_bonus: 5
+    
+    # Prefer records with specific industrial types
+    specific_type_bonus: 15
+    
+    # Penalty for very generic names
+    generic_name_penalty: -10
+
+  # Output limits
+  output_limits:
+    max_tier1_results: 500
+    max_tier2_results: 2000
+    max_total_results: 5000
+    
+    # Geographic distribution (prevent clustering)
+    max_per_postcode: 50
+    min_distance_meters: 100  # Minimum distance between candidates
+

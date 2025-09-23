@@ -1,0 +1,88 @@
+# File: aerospace_scoring/scoring.yaml
+# Scoring rules for aerospace supplier candidates
+# Higher scores indicate better matches for aerospace suppliers
+
+scoring_rules:
+  # Direct aerospace indicators (highest scores)
+  direct_aerospace:
+    weight: 100
+    conditions:
+      - name_contains: ['aerospace', 'aviation', 'aircraft', 'airbus', 'boeing', 'bae', 'rolls royce', 'safran', 'leonardo', 'thales']
+      - operator_contains: ['aerospace', 'aviation', 'aircraft']
+      - description_contains: ['aerospace', 'aviation', 'aircraft', 'avionics']
+      - office: ['aerospace', 'aviation']
+
+  # Defense/military contractors (high scores)
+  defense:
+    weight: 80
+    conditions:
+      - name_contains: ['defense', 'defence', 'military', 'radar', 'missile', 'weapons']
+      - description_contains: ['defense', 'defence', 'military', 'security']
+      - military: ['*']  # Any military tag
+      - landuse: ['military']
+
+  # High-tech manufacturing (medium-high scores)
+  high_tech:
+    weight: 70
+    conditions:
+      - name_contains: ['engineering', 'technology', 'systems', 'electronics', 'precision', 'advanced']
+      - industrial_type: ['engineering', 'electronics', 'precision', 'high_tech']
+      - man_made: ['works', 'factory']
+      - office: ['engineering', 'research', 'technology']
+      - building: ['industrial', 'factory', 'warehouse']
+
+  # General manufacturing (medium scores)
+  manufacturing:
+    weight: 50
+    conditions:
+      - landuse: ['industrial']
+      - building: ['industrial', 'warehouse', 'manufacture']
+      - industrial: ['*']
+      - craft: ['metalworking', 'electronics', 'machining']
+
+  # Research and development (medium scores)
+  research:
+    weight: 60
+    conditions:
+      - name_contains: ['research', 'development', 'laboratory', 'institute', 'university']
+      - office: ['research', 'engineering']
+      - amenity: ['research_institute', 'university']
+
+  # Logistics and supply chain (lower scores but relevant)
+  logistics:
+    weight: 30
+    conditions:
+      - name_contains: ['logistics', 'supply', 'distribution', 'freight']
+      - building: ['warehouse']
+      - landuse: ['logistics', 'transport']
+
+  # Geographic bonuses (UK aerospace clusters)
+  geographic_bonuses:
+    weight: 20
+    conditions:
+      # Major aerospace regions in UK
+      - postcode_area: ['BA', 'BS', 'GL']  # Bristol/Gloucestershire (Airbus, Rolls-Royce)
+      - postcode_area: ['DE']  # Derby (Rolls-Royce)
+      - postcode_area: ['PR']  # Preston (BAE Systems)
+      - postcode_area: ['YO']  # Yorkshire (various suppliers)
+      - postcode_area: ['CB']  # Cambridge (high-tech)
+      - postcode_area: ['RG', 'SL']  # Reading/Slough area
+
+# Keyword scoring (additive bonuses for multiple matches)
+keyword_bonuses:
+  tier1_keywords:
+    weight: 50
+    keywords: ['boeing', 'airbus', 'rolls royce', 'bae systems', 'leonardo', 'thales', 'safran']
+  
+  tier2_keywords:
+    weight: 30
+    keywords: ['aerospace', 'aviation', 'aircraft', 'avionics', 'turbine', 'engine']
+  
+  manufacturing_keywords:
+    weight: 20
+    keywords: ['precision', 'machining', 'casting', 'forging', 'composite', 'materials']
+  
+  technology_keywords:
+    weight: 25
+    keywords: ['engineering', 'technology', 'systems', 'electronics', 'software', 'control']
+

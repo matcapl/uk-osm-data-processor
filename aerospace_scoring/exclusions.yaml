@@ -1,0 +1,68 @@
+# ============================================================================
+# AEROSPACE SCORING CONFIGURATION FILES
+# ============================================================================
+
+# File: aerospace_scoring/exclusions.yaml
+---
+# Exclusion rules to filter out non-industrial/non-aerospace relevant features
+# These rules will be converted to WHERE clauses to exclude unwanted records
+
+exclusions:
+  # Exclude residential and consumer-focused features
+  residential:
+    - landuse: ['residential', 'retail', 'commercial']
+    - building: ['house', 'apartments', 'residential', 'hotel', 'retail', 'supermarket']
+    - amenity: ['restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'school', 'hospital', 'bank', 'pharmacy']
+    - shop: ['*']  # Exclude all retail shops
+    - tourism: ['*']  # Exclude all tourism features
+    - leisure: ['park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course']
+
+  # Exclude infrastructure not relevant to aerospace
+  infrastructure:
+    - highway: ['*']  # Exclude roads (but keep in case of transport companies)
+    - railway: ['station', 'halt', 'platform']  # Keep rail infrastructure companies
+    - waterway: ['*']
+    - natural: ['*']
+    - barrier: ['*']
+
+  # Exclude agricultural and extractive industries
+  primary_sectors:
+    - landuse: ['farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill']
+    - man_made: ['water_tower', 'water_works', 'sewage_plant']
+
+  # Size filters - exclude very small buildings that are unlikely to be suppliers
+  size_filters:
+    - building_area: '<100'  # Square meters
+    - way_area: '<100'
+
+# Positive inclusion overrides - even if excluded above, include these
+overrides:
+  aerospace_keywords:
+    - name: ['aerospace', 'aviation', 'aircraft', 'airbus', 'boeing', 'rolls royce', 'bae systems']
+    - operator: ['aerospace', 'aviation', 'aircraft']
+    - description: ['aerospace', 'aviation', 'aircraft', 'defense', 'defence']
+
+  industrial_overrides:
+    - landuse: ['industrial']
+    - building: ['industrial', 'warehouse', 'factory', 'manufacture']
+    - man_made: ['works', 'factory']
+    - industrial: ['*']  # Any industrial tag
+    - office: ['company', 'research', 'engineering']
+
+# Table-specific exclusion rules
+table_exclusions:
+  planet_osm_point:
+    # More restrictive for points as they're often POIs
+    - amenity: ['restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'fuel', 'parking']
+    - shop: ['*']
+    - tourism: ['*']
+  
+  planet_osm_polygon:
+    # Less restrictive for polygons as they represent facilities
+    - building: ['house', 'apartments', 'residential']
+    - landuse: ['residential', 'farmland', 'forest']
+  
+  planet_osm_line:
+    # Very restrictive for lines - mostly keep transport/utility corridors
+    - highway: ['footway', 'cycleway', 'path', 'steps']
+    - railway: ['abandoned', 'disused']
