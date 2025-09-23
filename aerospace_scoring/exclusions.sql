@@ -1,35 +1,84 @@
 -- Aerospace Supplier Candidate Exclusion SQL
 -- Generated from exclusions.yaml
--- Apply these filters to exclude non-relevant records
 
 -- Exclusions for planet_osm_point
--- Records passing filter: 
-SELECT COUNT(*) FROM public.planet_osm_point WHERE ((landuse NOT IN ('residential', 'retail', 'commercial') AND amenity NOT IN ('restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'school', 'hospital', 'bank', 'pharmacy') AND shop IS NULL AND tourism IS NULL AND leisure NOT IN ('park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course') AND highway IS NULL AND railway NOT IN ('station', 'halt', 'platform') AND waterway IS NULL AND natural IS NULL AND barrier IS NULL AND landuse NOT IN ('farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill') AND man_made NOT IN ('water_tower', 'water_works', 'sewage_plant') AND amenity NOT IN ('restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'fuel', 'parking') AND shop IS NULL AND tourism IS NULL) OR (name IN ('aerospace', 'aviation', 'aircraft', 'airbus', 'boeing', 'rolls royce', 'bae systems')) OR (operator IN ('aerospace', 'aviation', 'aircraft')) OR (landuse IN ('industrial')) OR (man_made IN ('works', 'factory')) OR (office IN ('company', 'research', 'engineering')));
-
 CREATE OR REPLACE VIEW public.planet_osm_point_aerospace_filtered AS
 SELECT * FROM public.planet_osm_point
-WHERE ((landuse NOT IN ('residential', 'retail', 'commercial') AND amenity NOT IN ('restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'school', 'hospital', 'bank', 'pharmacy') AND shop IS NULL AND tourism IS NULL AND leisure NOT IN ('park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course') AND highway IS NULL AND railway NOT IN ('station', 'halt', 'platform') AND waterway IS NULL AND natural IS NULL AND barrier IS NULL AND landuse NOT IN ('farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill') AND man_made NOT IN ('water_tower', 'water_works', 'sewage_plant') AND amenity NOT IN ('restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'fuel', 'parking') AND shop IS NULL AND tourism IS NULL) OR (name IN ('aerospace', 'aviation', 'aircraft', 'airbus', 'boeing', 'rolls royce', 'bae systems')) OR (operator IN ('aerospace', 'aviation', 'aircraft')) OR (landuse IN ('industrial')) OR (man_made IN ('works', 'factory')) OR (office IN ('company', 'research', 'engineering')));
+WHERE (
+    landuse NOT IN ('residential', 'retail', 'commercial') AND
+    amenity NOT IN ('restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'school', 'hospital', 'bank', 'pharmacy') AND
+    shop IS NULL AND
+    tourism IS NULL AND
+    leisure NOT IN ('park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course') AND
+    highway IS NULL AND
+    railway NOT IN ('station', 'halt', 'platform') AND
+    waterway IS NULL AND
+    natural IS NULL AND
+    barrier IS NULL AND
+    landuse NOT IN ('farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill') AND
+    man_made NOT IN ('water_tower', 'water_works', 'sewage_plant') AND
+    amenity NOT IN ('fuel', 'parking') AND
+    shop IS NULL AND
+    tourism IS NULL
+);
 
 -- Exclusions for planet_osm_line
--- Records passing filter: 
-SELECT COUNT(*) FROM public.planet_osm_line WHERE ((landuse NOT IN ('residential', 'retail', 'commercial') AND building NOT IN ('house', 'apartments', 'residential', 'hotel', 'retail', 'supermarket') AND amenity NOT IN ('restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'school', 'hospital', 'bank', 'pharmacy') AND shop IS NULL AND tourism IS NULL AND leisure NOT IN ('park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course') AND highway IS NULL AND railway NOT IN ('station', 'halt', 'platform') AND waterway IS NULL AND natural IS NULL AND barrier IS NULL AND landuse NOT IN ('farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill') AND man_made NOT IN ('water_tower', 'water_works', 'sewage_plant') AND (area IS NULL OR area >= 100) AND (area IS NULL OR area >= 100) AND highway NOT IN ('footway', 'cycleway', 'path', 'steps') AND railway NOT IN ('abandoned', 'disused')) OR (name IN ('aerospace', 'aviation', 'aircraft', 'airbus', 'boeing', 'rolls royce', 'bae systems')) OR (operator IN ('aerospace', 'aviation', 'aircraft')) OR (landuse IN ('industrial')) OR (building IN ('industrial', 'warehouse', 'factory', 'manufacture')) OR (man_made IN ('works', 'factory')) OR (industrial IS NOT NULL) OR (office IN ('company', 'research', 'engineering')));
-
 CREATE OR REPLACE VIEW public.planet_osm_line_aerospace_filtered AS
 SELECT * FROM public.planet_osm_line
-WHERE ((landuse NOT IN ('residential', 'retail', 'commercial') AND building NOT IN ('house', 'apartments', 'residential', 'hotel', 'retail', 'supermarket') AND amenity NOT IN ('restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'school', 'hospital', 'bank', 'pharmacy') AND shop IS NULL AND tourism IS NULL AND leisure NOT IN ('park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course') AND highway IS NULL AND railway NOT IN ('station', 'halt', 'platform') AND waterway IS NULL AND natural IS NULL AND barrier IS NULL AND landuse NOT IN ('farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill') AND man_made NOT IN ('water_tower', 'water_works', 'sewage_plant') AND (area IS NULL OR area >= 100) AND (area IS NULL OR area >= 100) AND highway NOT IN ('footway', 'cycleway', 'path', 'steps') AND railway NOT IN ('abandoned', 'disused')) OR (name IN ('aerospace', 'aviation', 'aircraft', 'airbus', 'boeing', 'rolls royce', 'bae systems')) OR (operator IN ('aerospace', 'aviation', 'aircraft')) OR (landuse IN ('industrial')) OR (building IN ('industrial', 'warehouse', 'factory', 'manufacture')) OR (man_made IN ('works', 'factory')) OR (industrial IS NOT NULL) OR (office IN ('company', 'research', 'engineering')));
+WHERE (
+    landuse NOT IN ('residential', 'retail', 'commercial') AND
+    building NOT IN ('house', 'apartments', 'residential', 'hotel', 'retail', 'supermarket') AND
+    amenity NOT IN ('restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'school', 'hospital', 'bank', 'pharmacy') AND
+    shop IS NULL AND
+    tourism IS NULL AND
+    leisure NOT IN ('park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course') AND
+    highway IS NULL AND
+    railway NOT IN ('station', 'halt', 'platform') AND
+    waterway IS NULL AND
+    natural IS NULL AND
+    barrier IS NULL AND
+    landuse NOT IN ('farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill') AND
+    man_made NOT IN ('water_tower', 'water_works', 'sewage_plant') AND
+    highway NOT IN ('footway', 'cycleway', 'path', 'steps') AND
+    railway NOT IN ('abandoned', 'disused')
+);
 
 -- Exclusions for planet_osm_polygon
--- Records passing filter: 
-SELECT COUNT(*) FROM public.planet_osm_polygon WHERE ((landuse NOT IN ('residential', 'retail', 'commercial') AND building NOT IN ('house', 'apartments', 'residential', 'hotel', 'retail', 'supermarket') AND amenity NOT IN ('restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'school', 'hospital', 'bank', 'pharmacy') AND shop IS NULL AND tourism IS NULL AND leisure NOT IN ('park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course') AND highway IS NULL AND railway NOT IN ('station', 'halt', 'platform') AND waterway IS NULL AND natural IS NULL AND barrier IS NULL AND landuse NOT IN ('farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill') AND man_made NOT IN ('water_tower', 'water_works', 'sewage_plant') AND (area IS NULL OR area >= 100) AND (area IS NULL OR area >= 100) AND building NOT IN ('house', 'apartments', 'residential') AND landuse NOT IN ('residential', 'farmland', 'forest')) OR (name IN ('aerospace', 'aviation', 'aircraft', 'airbus', 'boeing', 'rolls royce', 'bae systems')) OR (operator IN ('aerospace', 'aviation', 'aircraft')) OR (landuse IN ('industrial')) OR (building IN ('industrial', 'warehouse', 'factory', 'manufacture')) OR (man_made IN ('works', 'factory')) OR (industrial IS NOT NULL) OR (office IN ('company', 'research', 'engineering')));
-
 CREATE OR REPLACE VIEW public.planet_osm_polygon_aerospace_filtered AS
 SELECT * FROM public.planet_osm_polygon
-WHERE ((landuse NOT IN ('residential', 'retail', 'commercial') AND building NOT IN ('house', 'apartments', 'residential', 'hotel', 'retail', 'supermarket') AND amenity NOT IN ('restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'school', 'hospital', 'bank', 'pharmacy') AND shop IS NULL AND tourism IS NULL AND leisure NOT IN ('park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course') AND highway IS NULL AND railway NOT IN ('station', 'halt', 'platform') AND waterway IS NULL AND natural IS NULL AND barrier IS NULL AND landuse NOT IN ('farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill') AND man_made NOT IN ('water_tower', 'water_works', 'sewage_plant') AND (area IS NULL OR area >= 100) AND (area IS NULL OR area >= 100) AND building NOT IN ('house', 'apartments', 'residential') AND landuse NOT IN ('residential', 'farmland', 'forest')) OR (name IN ('aerospace', 'aviation', 'aircraft', 'airbus', 'boeing', 'rolls royce', 'bae systems')) OR (operator IN ('aerospace', 'aviation', 'aircraft')) OR (landuse IN ('industrial')) OR (building IN ('industrial', 'warehouse', 'factory', 'manufacture')) OR (man_made IN ('works', 'factory')) OR (industrial IS NOT NULL) OR (office IN ('company', 'research', 'engineering')));
+WHERE (
+    landuse NOT IN ('residential', 'retail', 'commercial') AND
+    building NOT IN ('house', 'apartments', 'residential', 'hotel', 'retail', 'supermarket') AND
+    amenity NOT IN ('restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'school', 'hospital', 'bank', 'pharmacy') AND
+    shop IS NULL AND
+    tourism IS NULL AND
+    leisure NOT IN ('park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course') AND
+    highway IS NULL AND
+    railway NOT IN ('station', 'halt', 'platform') AND
+    waterway IS NULL AND
+    natural IS NULL AND
+    barrier IS NULL AND
+    landuse NOT IN ('farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill') AND
+    man_made NOT IN ('water_tower', 'water_works', 'sewage_plant') AND
+    building NOT IN ('house', 'apartments', 'residential') AND
+    landuse NOT IN ('residential', 'farmland', 'forest')
+);
 
 -- Exclusions for planet_osm_roads
--- Records passing filter: 
-SELECT COUNT(*) FROM public.planet_osm_roads WHERE ((landuse NOT IN ('residential', 'retail', 'commercial') AND building NOT IN ('house', 'apartments', 'residential', 'hotel', 'retail', 'supermarket') AND amenity NOT IN ('restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'school', 'hospital', 'bank', 'pharmacy') AND shop IS NULL AND tourism IS NULL AND leisure NOT IN ('park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course') AND highway IS NULL AND railway NOT IN ('station', 'halt', 'platform') AND waterway IS NULL AND natural IS NULL AND barrier IS NULL AND landuse NOT IN ('farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill') AND man_made NOT IN ('water_tower', 'water_works', 'sewage_plant') AND (area IS NULL OR area >= 100) AND (area IS NULL OR area >= 100)) OR (name IN ('aerospace', 'aviation', 'aircraft', 'airbus', 'boeing', 'rolls royce', 'bae systems')) OR (operator IN ('aerospace', 'aviation', 'aircraft')) OR (landuse IN ('industrial')) OR (building IN ('industrial', 'warehouse', 'factory', 'manufacture')) OR (man_made IN ('works', 'factory')) OR (industrial IS NOT NULL) OR (office IN ('company', 'research', 'engineering')));
-
 CREATE OR REPLACE VIEW public.planet_osm_roads_aerospace_filtered AS
 SELECT * FROM public.planet_osm_roads
-WHERE ((landuse NOT IN ('residential', 'retail', 'commercial') AND building NOT IN ('house', 'apartments', 'residential', 'hotel', 'retail', 'supermarket') AND amenity NOT IN ('restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'school', 'hospital', 'bank', 'pharmacy') AND shop IS NULL AND tourism IS NULL AND leisure NOT IN ('park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course') AND highway IS NULL AND railway NOT IN ('station', 'halt', 'platform') AND waterway IS NULL AND natural IS NULL AND barrier IS NULL AND landuse NOT IN ('farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill') AND man_made NOT IN ('water_tower', 'water_works', 'sewage_plant') AND (area IS NULL OR area >= 100) AND (area IS NULL OR area >= 100)) OR (name IN ('aerospace', 'aviation', 'aircraft', 'airbus', 'boeing', 'rolls royce', 'bae systems')) OR (operator IN ('aerospace', 'aviation', 'aircraft')) OR (landuse IN ('industrial')) OR (building IN ('industrial', 'warehouse', 'factory', 'manufacture')) OR (man_made IN ('works', 'factory')) OR (industrial IS NOT NULL) OR (office IN ('company', 'research', 'engineering')));
+WHERE (
+    landuse NOT IN ('residential', 'retail', 'commercial') AND
+    building NOT IN ('house', 'apartments', 'residential', 'hotel', 'retail', 'supermarket') AND
+    amenity NOT IN ('restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'school', 'hospital', 'bank', 'pharmacy') AND
+    shop IS NULL AND
+    tourism IS NULL AND
+    leisure NOT IN ('park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course') AND
+    highway IS NULL AND
+    railway NOT IN ('station', 'halt', 'platform') AND
+    waterway IS NULL AND
+    natural IS NULL AND
+    barrier IS NULL AND
+    landuse NOT IN ('farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill') AND
+    man_made NOT IN ('water_tower', 'water_works', 'sewage_plant')
+);
