@@ -18,7 +18,7 @@ def connect_to_database() -> psycopg2.extensions.connection:
     """Connect to the UK OSM database."""
     try:
         # Load database configuration
-        with open('config/config.yaml', 'r') as f:
+        with open('../config/config.yaml', 'r') as f:
             config = yaml.safe_load(f)
         
         db_config = config['database']
@@ -39,7 +39,7 @@ def inspect_osm_tables(conn: psycopg2.extensions.connection) -> Dict[str, Any]:
     
     # Get schema from config
     try:
-        with open('config/config.yaml', 'r') as f:
+        with open('../config/config.yaml', 'r') as f:
             config = yaml.safe_load(f)
         schema = config['database'].get('schema', 'osm_raw')
     except:
@@ -164,7 +164,7 @@ def analyze_aerospace_relevant_columns(schema_info: Dict[str, Any]) -> Dict[str,
     
     return found_columns
 
-def export_schema_analysis(schema_info: Dict[str, Any], output_dir: Path = Path('aerospace_scoring')):
+def export_schema_analysis(schema_info: Dict[str, Any], output_dir: Path = Path('./')):
     """Export schema analysis to files."""
     output_dir.mkdir(exist_ok=True)
     

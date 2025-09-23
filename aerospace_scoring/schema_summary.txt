@@ -1,0 +1,38 @@
+UK OSM Database Schema Analysis
+========================================
+
+Total tables: 4
+Tables with data: 4
+Total columns: 288
+
+Table Details:
+--------------------
+planet_osm_point:
+  Columns: 54
+  Records: 285,167
+  Key columns: ['osm_id', 'addr:city', 'addr:country', 'addr:housenumber', 'addr:postcode', 'addr:street', 'aerialway', 'aeroway', 'amenity', 'barrier']
+
+planet_osm_line:
+  Columns: 78
+  Records: 547,691
+  Key columns: ['osm_id', 'access', 'addr:city', 'addr:country', 'addr:housenumber', 'addr:postcode', 'addr:street', 'addr:state', 'addr:suburb', 'admin_level']
+
+planet_osm_polygon:
+  Columns: 78
+  Records: 5,237
+  Key columns: ['osm_id', 'access', 'addr:city', 'addr:country', 'addr:housenumber', 'addr:postcode', 'addr:street', 'addr:state', 'addr:suburb', 'admin_level']
+
+planet_osm_roads:
+  Columns: 78
+  Records: 19,748
+  Key columns: ['osm_id', 'access', 'addr:city', 'addr:country', 'addr:housenumber', 'addr:postcode', 'addr:street', 'addr:state', 'addr:suburb', 'admin_level']
+
+
+Aerospace-Relevant Columns:
+------------------------------
+Primary_Filters: landuse, man_made, amenity, aeroway, military, industrial, building
+Identification: name, operator, brand, office, shop
+Contact_Info: website
+Address: addr:postcode, addr:street, addr:city, addr:country
+Descriptive: service
+Spatial: way

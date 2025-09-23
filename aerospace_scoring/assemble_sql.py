@@ -25,14 +25,14 @@ def load_all_configs() -> tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], 
     
     configs = {}
     for name, filename in config_files.items():
-        with open(f'aerospace_scoring/{filename}', 'r') as f:
+        with open(f'./{filename}', 'r') as f:
             configs[name] = yaml.safe_load(f)
     
     return configs['thresholds'], configs['seed_columns'], configs['scoring'], configs['exclusions']
 
 def load_schema() -> Dict[str, Any]:
     """Load database schema."""
-    with open('aerospace_scoring/schema.json', 'r') as f:
+    with open('./schema.json', 'r') as f:
         return json.load(f)
 
 def generate_output_table_ddl(seed_columns: Dict[str, Any]) -> str:
@@ -150,7 +150,9 @@ def generate_insert_statement(schema: Dict[str, Any], seed_columns: Dict[str, An
     union_parts = []
     for table_name_src in ['planet_osm_point', 'planet_osm_line', 'planet_osm_polygon']:
         view_name = f"{table_name_src}_aerospace_scored"
-        union_parts.append(f"SELECT\n{',\n'.join(select_expressions)}\nFROM {schema_name}.{view_name}")
+        joined = ",\n".join(select_expressions)
+        select_sql = "SELECT\n" + joined + f"\nFROM {schema_name}.{view_name}"
+        union_parts.append(select_sql)
     
     insert_sql = f"""
 -- Insert aerospace supplier candidates from all tables
@@ -185,7 +187,11 @@ def generate_tier_classification_case(thresholds: Dict[str, Any]) -> str:
     
     case_parts.append("ELSE 'unclassified'")
     
-    return f"CASE\n        {'\n        '.join(case_parts)}\n    END"
+    lines = ["CASE"]
+    for part in case_parts:
+        lines.append("    " + part)
+    lines.append("END")
+    return "\n".join(lines)
 
 def generate_confidence_case(thresholds: Dict[str, Any]) -> str:
     """Generate confidence level based on score and data quality."""
@@ -199,62 +205,102 @@ def generate_confidence_case(thresholds: Dict[str, Any]) -> str:
 def load_generated_sql_files() -> tuple[str, str]:
     """Load previously generated SQL files."""
     try:
-        with open('aerospace_scoring/exclusions.sql', 'r') as f:
+        with open('./exclusions.sql', 'r') as f:
             exclusions_sql = f.read()
     except FileNotFoundError:
         exclusions_sql = "-- Exclusions SQL not found - run generate_exclusions.py first"
     
     try:
-        with open('aerospace_scoring/scoring.sql', 'r') as f:
+        with open('./scoring.sql', 'r') as f:
             scoring_sql = f.read()
     except FileNotFoundError:
         scoring_sql = "-- Scoring SQL not found - run generate_scoring.py first"
     
     return exclusions_sql, scoring_sql
 
-def assemble_complete_sql(schema: Dict[str, Any], thresholds: Dict[str, Any], 
-                         seed_columns: Dict[str, Any]) -> str:
+def assemble_complete_sql(schema: Dict[str, Any], thresholds: Dict[str, Any],
+                          seed_columns: Dict[str, Any]) -> str:
     """Assemble the complete SQL script."""
-    
+
     # Load component SQL files
     exclusions_sql, scoring_sql = load_generated_sql_files()
-    
+
     # Generate components
     table_ddl = generate_output_table_ddl(seed_columns)
     insert_statement = generate_insert_statement(schema, seed_columns, thresholds)
-    
-    # Assemble final script
-    sql_parts = []
-    
-    # Header
-    sql_parts.append("-- " + "="*80)
+
+    # Begin assembling
+    sql_parts: List[str] = []
+
+    # 0. Search path
+    sql_parts.append("SET search_path = public;\n")
+
+    # 1. Header
+    sql_parts.append("-- " + "=" * 80)
     sql_parts.append("-- UK AEROSPACE SUPPLIER IDENTIFICATION SYSTEM")
     sql_parts.append(f"-- Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    sql_parts.append("-- " + "="*80)
+    sql_parts.append("-- " + "=" * 80)
     sql_parts.append("")
-    
-    # Configuration summary
+
+    # 2. Configuration summary
     sql_parts.append("-- CONFIGURATION SUMMARY:")
-    sql_parts.append(f"-- Target database: {schema.get('schema', 'osm_raw')}")
+    sql_parts.append(f"-- Target schema: public")
     sql_parts.append(f"-- Output table: {seed_columns['output_table']['name']}")
-    sql_parts.append(f"-- Max results: {thresholds['thresholds']['output_limits'].get('max_total_results', 5000)}")
+    max_results = thresholds['thresholds']['output_limits'].get('max_total_results', 5000)
+    sql_parts.append(f"-- Max results: {max_results}")
     sql_parts.append("")
-    
-    # Step 1: Create filtered views (exclusions)
-    sql_parts.append("-- STEP 1: Apply exclusion filters")
-    sql_parts.append("-- Creates filtered views with non-aerospace features excluded")
+
+    # 3. Step 1: Create output table
+    sql_parts.append("-- STEP 1: Create output table")
+    sql_parts.append(table_ddl)
+    sql_parts.append("")
+
+    # 4. Step 2: Exclusions
+    sql_parts.append("-- STEP 2: Apply exclusion filters")
     sql_parts.append(exclusions_sql)
     sql_parts.append("")
-    
-    # Step 2: Create scored views
-    sql_parts.append("-- STEP 2: Apply scoring rules")
-    sql_parts.append("-- Creates views with aerospace relevance scores")
-    
-    # Modify scoring SQL to create views instead of direct selects
-    scoring_lines = scoring_sql.split('\n')
-    modified_scoring = []
-    current_table = None
-    
+
+    # 5. Step 3: Scoring views
+    sql_parts.append("-- STEP 3: Apply scoring rules")
+    # Turn each scoring SELECT into a CREATE VIEW
+    scoring_lines = scoring_sql.splitlines()
+    view_sql_parts: List[str] = []
+    view_name = None
+    buffer: List[str] = []
     for line in scoring_lines:
-        if 'SELECT *,' in line and 'FROM' in scoring_lines[scoring_lines.index(line)+3]:
-            # This is a scoring query
+        if line.strip().startswith("-- Scoring for"):
+            # flush previous buffer
+            if buffer and view_name:
+                view_sql_parts.append(f"CREATE VIEW {view_name}_aerospace_scored AS")
+                view_sql_parts.extend(buffer)
+                view_sql_parts.append("")  # blank line
+            buffer = []
+            view_name = line.strip().split()[-1]
+        else:
+            # accumulate SELECT/WHERE/etc.
+            if view_name:
+                buffer.append(line)
+    # flush last
+    if buffer and view_name:
+        view_sql_parts.append(f"CREATE VIEW {view_name}_aerospace_scored AS")
+        view_sql_parts.extend(buffer)
+        view_sql_parts.append("")
+
+    sql_parts.extend(view_sql_parts)
+
+    # 6. Step 4: Final insert
+    sql_parts.append("-- STEP 4: Insert results into final table")
+    sql_parts.append(insert_statement)
+    sql_parts.append("")
+
+    return "\n".join(sql_parts)
+
+
+if __name__ == "__main__":
+    # Load configs and schema
+    thresholds, seed_cols, scoring_cfg, exclusions_cfg = load_all_configs()
+    schema = load_schema()
+    sql = assemble_complete_sql(schema, thresholds, seed_cols)
+    out_path = Path("./compute_aerospace_complete.sql")
+    out_path.write_text(sql)
+    print(f"✓ Complete SQL written to {out_path}")

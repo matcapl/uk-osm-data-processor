@@ -1,7 +1,7 @@
 UK OSM Data Import Verification Report
 ==================================================
 
-Generated: 2025-09-19 15:00:15
+Generated: 2025-09-23 18:09:31
 Database: uk_osm_full
 Schema: public
 
@@ -15,7 +15,7 @@ total                    : 857,843
 
 DATABASE STATISTICS
 -------------------------
-Total size: 850 MB
+Total size: 859 MB
 Indexes: 17
 Constraints: 5
 

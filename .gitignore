@@ -44,3 +44,7 @@ Thumbs.db
 
 # PostgreSQL
 *.sql.backup
+
+trash/
+
+logfile

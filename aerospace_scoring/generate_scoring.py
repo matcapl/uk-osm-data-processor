@@ -11,10 +11,10 @@ from typing import Dict, List, Any, Optional
 
 def load_scoring_config() -> tuple[Dict[str, Any], Dict[str, Any]]:
     """Load scoring and negative signals configuration."""
-    with open('aerospace_scoring/scoring.yaml', 'r') as f:
+    with open('./scoring.yaml', 'r') as f:
         scoring = yaml.safe_load(f)
     
-    with open('aerospace_scoring/negative_signals.yaml', 'r') as f:
+    with open('./negative_signals.yaml', 'r') as f:
         negative_signals = yaml.safe_load(f)
     
     return scoring, negative_signals
@@ -221,7 +221,8 @@ def generate_complete_scoring_expression(schema: Dict[str, Any], table: str,
     
     # Final expression
     if all_parts:
-        return f"(\n    {' +\n    '.join(all_parts)}\n) AS aerospace_score"
+        joined = " +\n    ".join(all_parts)
+        return "(\n    " + joined + "\n) AS aerospace_score"
     else:
         return "0 AS aerospace_score"
 
@@ -286,13 +287,13 @@ def main():
     try:
         scoring, negative_signals = load_scoring_config()
         
-        with open('aerospace_scoring/schema.json', 'r') as f:
+        with open('./schema.json', 'r') as f:
             schema = json.load(f)
         
         scoring_sql = generate_scoring_sql(schema, scoring, negative_signals)
         
         # Save SQL file
-        output_file = Path('aerospace_scoring/scoring.sql')
+        output_file = Path('./scoring.sql')
         with open(output_file, 'w') as f:
             f.write(scoring_sql)
         

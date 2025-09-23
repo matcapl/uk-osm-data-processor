@@ -15,13 +15,13 @@ from typing import Dict, List, Any, Optional
 
 def load_exclusions() -> Dict[str, Any]:
     """Load exclusion rules from YAML file."""
-    with open('aerospace_scoring/exclusions.yaml', 'r') as f:
+    with open('./exclusions.yaml', 'r') as f:
         return yaml.safe_load(f)
 
 def load_schema() -> Dict[str, Any]:
     """Load database schema information."""
     try:
-        with open('aerospace_scoring/schema.json', 'r') as f:
+        with open('./schema.json', 'r') as f:
             return json.load(f)
     except FileNotFoundError:
         print("Schema file not found. Run load_schema.py first.")
@@ -190,7 +190,7 @@ def main():
         exclusion_sql = generate_exclusion_sql(exclusion_clauses, schema)
         
         # Save SQL file
-        output_file = Path('aerospace_scoring/exclusions.sql')
+        output_file = Path('./exclusions.sql')
         with open(output_file, 'w') as f:
             f.write(exclusion_sql)
         

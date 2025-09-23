@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-09-19 15:00:15",
+  "timestamp": "2025-09-23 18:09:31",
   "config": {
     "database": {
       "name": "uk_osm_full",
@@ -1787,7 +1787,7 @@
     }
   },
   "database_stats": {
-    "database_size": "850 MB",
+    "database_size": "859 MB",
     "table_sizes": {
       "planet_osm_point": "104 MB",
       "planet_osm_line": "296 MB",
@@ -1837,7 +1837,7 @@
         [
           "primary",
           7877,
-          532.8289472463185
+          532.8289472463176
         ],
         [
           "trunk",
@@ -1852,7 +1852,7 @@
         [
           "motorway",
           21,
-          6.988055520704085
+          6.988055520704086
         ]
       ],
       "result_count": 4,
