@@ -83,14 +83,14 @@ echo "Points with office/industrial tags:"
 psql -d uk_osm_full -c "
 SELECT COUNT(*) as office_industrial_points
 FROM public.planet_osm_point 
-WHERE office IS NOT NULL OR industrial IS NOT NULL OR man_made IS NOT NULL;
+WHERE office IS NOT NULL OR man_made IS NOT NULL;
 "
 
 echo "Sample of potentially relevant points:"
 psql -d uk_osm_full -c "
-SELECT name, amenity, office, industrial, man_made
+SELECT name, amenity, office, man_made
 FROM public.planet_osm_point 
-WHERE (office IS NOT NULL OR industrial IS NOT NULL OR man_made IS NOT NULL)
+WHERE (office IS NOT NULL OR man_made IS NOT NULL)
   AND name IS NOT NULL
 LIMIT 10;
 "

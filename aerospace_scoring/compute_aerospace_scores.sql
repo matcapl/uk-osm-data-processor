@@ -1,10 +1,42 @@
 -- UK AEROSPACE SUPPLIER IDENTIFICATION SYSTEM
--- Generated on: 2025-09-24 19:59:45
+-- Generated on: 2025-09-24 20:35:50
 -- Database: public
 
 -- STEP 1: Apply exclusion filters
 -- Aerospace Supplier Exclusion Filters
 -- Generated from exclusions.yaml
+
+-- Filtered view for planet_osm_point
+DROP VIEW IF EXISTS public.planet_osm_point_aerospace_filtered CASCADE;
+CREATE VIEW public.planet_osm_point_aerospace_filtered AS
+SELECT * FROM public.planet_osm_point
+WHERE (((landuse IS NULL OR landuse NOT IN ('residential', 'retail', 'commercial')) AND (amenity IS NULL OR amenity NOT IN ('restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'school', 'hospital', 'bank', 'pharmacy')) AND shop IS NULL AND tourism IS NULL AND (leisure IS NULL OR leisure NOT IN ('park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course')) AND (railway IS NULL OR railway NOT IN ('station', 'halt', 'platform')) AND (natural IS NULL OR natural NOT IN ('forest', 'water', 'wood', 'grassland', 'scrub')) AND (barrier IS NULL OR barrier NOT IN ('fence', 'wall', 'hedge')) AND (landuse IS NULL OR landuse NOT IN ('farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill')) AND (man_made IS NULL OR man_made NOT IN ('water_tower', 'water_works', 'sewage_plant')) AND (amenity IS NULL OR amenity NOT IN ('restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'fuel', 'parking')) AND shop IS NULL AND tourism IS NULL) OR ((LOWER(name) LIKE LOWER('%aerospace%') OR LOWER(name) LIKE LOWER('%aviation%') OR LOWER(name) LIKE LOWER('%aircraft%') OR LOWER(name) LIKE LOWER('%airbus%') OR LOWER(name) LIKE LOWER('%boeing%') OR LOWER(name) LIKE LOWER('%rolls royce%') OR LOWER(name) LIKE LOWER('%bae systems%')) OR (LOWER(operator) LIKE LOWER('%aerospace%') OR LOWER(operator) LIKE LOWER('%aviation%') OR LOWER(operator) LIKE LOWER('%aircraft%')) OR landuse IN ('industrial') OR man_made IN ('works', 'factory') OR office IN ('company', 'research', 'engineering')));
+-- Row count check:
+-- SELECT COUNT(*) FROM public.planet_osm_point_aerospace_filtered;
+
+-- Filtered view for planet_osm_line
+DROP VIEW IF EXISTS public.planet_osm_line_aerospace_filtered CASCADE;
+CREATE VIEW public.planet_osm_line_aerospace_filtered AS
+SELECT * FROM public.planet_osm_line
+WHERE (((landuse IS NULL OR landuse NOT IN ('residential', 'retail', 'commercial')) AND (building IS NULL OR building NOT IN ('house', 'apartments', 'residential', 'hotel', 'retail', 'supermarket')) AND (amenity IS NULL OR amenity NOT IN ('restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'school', 'hospital', 'bank', 'pharmacy')) AND shop IS NULL AND tourism IS NULL AND (leisure IS NULL OR leisure NOT IN ('park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course')) AND (railway IS NULL OR railway NOT IN ('station', 'halt', 'platform')) AND (natural IS NULL OR natural NOT IN ('forest', 'water', 'wood', 'grassland', 'scrub')) AND (barrier IS NULL OR barrier NOT IN ('fence', 'wall', 'hedge')) AND (landuse IS NULL OR landuse NOT IN ('farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill')) AND (man_made IS NULL OR man_made NOT IN ('water_tower', 'water_works', 'sewage_plant')) AND (highway IS NULL OR highway NOT IN ('footway', 'cycleway', 'path', 'steps')) AND (railway IS NULL OR railway NOT IN ('abandoned', 'disused'))) OR ((LOWER(name) LIKE LOWER('%aerospace%') OR LOWER(name) LIKE LOWER('%aviation%') OR LOWER(name) LIKE LOWER('%aircraft%') OR LOWER(name) LIKE LOWER('%airbus%') OR LOWER(name) LIKE LOWER('%boeing%') OR LOWER(name) LIKE LOWER('%rolls royce%') OR LOWER(name) LIKE LOWER('%bae systems%')) OR (LOWER(operator) LIKE LOWER('%aerospace%') OR LOWER(operator) LIKE LOWER('%aviation%') OR LOWER(operator) LIKE LOWER('%aircraft%')) OR landuse IN ('industrial') OR building IN ('industrial', 'warehouse', 'factory', 'manufacture') OR man_made IN ('works', 'factory') OR industrial IS NOT NULL OR office IN ('company', 'research', 'engineering')));
+-- Row count check:
+-- SELECT COUNT(*) FROM public.planet_osm_line_aerospace_filtered;
+
+-- Filtered view for planet_osm_polygon
+DROP VIEW IF EXISTS public.planet_osm_polygon_aerospace_filtered CASCADE;
+CREATE VIEW public.planet_osm_polygon_aerospace_filtered AS
+SELECT * FROM public.planet_osm_polygon
+WHERE (((landuse IS NULL OR landuse NOT IN ('residential', 'retail', 'commercial')) AND (building IS NULL OR building NOT IN ('house', 'apartments', 'residential', 'hotel', 'retail', 'supermarket')) AND (amenity IS NULL OR amenity NOT IN ('restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'school', 'hospital', 'bank', 'pharmacy')) AND shop IS NULL AND tourism IS NULL AND (leisure IS NULL OR leisure NOT IN ('park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course')) AND (railway IS NULL OR railway NOT IN ('station', 'halt', 'platform')) AND (natural IS NULL OR natural NOT IN ('forest', 'water', 'wood', 'grassland', 'scrub')) AND (barrier IS NULL OR barrier NOT IN ('fence', 'wall', 'hedge')) AND (landuse IS NULL OR landuse NOT IN ('farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill')) AND (man_made IS NULL OR man_made NOT IN ('water_tower', 'water_works', 'sewage_plant')) AND (building IS NULL OR building NOT IN ('house', 'apartments', 'residential')) AND (landuse IS NULL OR landuse NOT IN ('residential', 'farmland', 'forest'))) OR ((LOWER(name) LIKE LOWER('%aerospace%') OR LOWER(name) LIKE LOWER('%aviation%') OR LOWER(name) LIKE LOWER('%aircraft%') OR LOWER(name) LIKE LOWER('%airbus%') OR LOWER(name) LIKE LOWER('%boeing%') OR LOWER(name) LIKE LOWER('%rolls royce%') OR LOWER(name) LIKE LOWER('%bae systems%')) OR (LOWER(operator) LIKE LOWER('%aerospace%') OR LOWER(operator) LIKE LOWER('%aviation%') OR LOWER(operator) LIKE LOWER('%aircraft%')) OR landuse IN ('industrial') OR building IN ('industrial', 'warehouse', 'factory', 'manufacture') OR man_made IN ('works', 'factory') OR industrial IS NOT NULL OR office IN ('company', 'research', 'engineering')));
+-- Row count check:
+-- SELECT COUNT(*) FROM public.planet_osm_polygon_aerospace_filtered;
+
+-- Filtered view for planet_osm_roads
+DROP VIEW IF EXISTS public.planet_osm_roads_aerospace_filtered CASCADE;
+CREATE VIEW public.planet_osm_roads_aerospace_filtered AS
+SELECT * FROM public.planet_osm_roads
+WHERE (((landuse IS NULL OR landuse NOT IN ('residential', 'retail', 'commercial')) AND (building IS NULL OR building NOT IN ('house', 'apartments', 'residential', 'hotel', 'retail', 'supermarket')) AND (amenity IS NULL OR amenity NOT IN ('restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'school', 'hospital', 'bank', 'pharmacy')) AND shop IS NULL AND tourism IS NULL AND (leisure IS NULL OR leisure NOT IN ('park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course')) AND (railway IS NULL OR railway NOT IN ('station', 'halt', 'platform')) AND (natural IS NULL OR natural NOT IN ('forest', 'water', 'wood', 'grassland', 'scrub')) AND (barrier IS NULL OR barrier NOT IN ('fence', 'wall', 'hedge')) AND (landuse IS NULL OR landuse NOT IN ('farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill')) AND (man_made IS NULL OR man_made NOT IN ('water_tower', 'water_works', 'sewage_plant'))) OR ((LOWER(name) LIKE LOWER('%aerospace%') OR LOWER(name) LIKE LOWER('%aviation%') OR LOWER(name) LIKE LOWER('%aircraft%') OR LOWER(name) LIKE LOWER('%airbus%') OR LOWER(name) LIKE LOWER('%boeing%') OR LOWER(name) LIKE LOWER('%rolls royce%') OR LOWER(name) LIKE LOWER('%bae systems%')) OR (LOWER(operator) LIKE LOWER('%aerospace%') OR LOWER(operator) LIKE LOWER('%aviation%') OR LOWER(operator) LIKE LOWER('%aircraft%')) OR landuse IN ('industrial') OR building IN ('industrial', 'warehouse', 'factory', 'manufacture') OR man_made IN ('works', 'factory') OR industrial IS NOT NULL OR office IN ('company', 'research', 'engineering')));
+-- Row count check:
+-- SELECT COUNT(*) FROM public.planet_osm_roads_aerospace_filtered;
 
 
 -- STEP 2: Apply scoring rules
