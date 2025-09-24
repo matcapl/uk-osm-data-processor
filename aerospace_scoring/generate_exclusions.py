@@ -47,10 +47,10 @@ def build_clause(rule: Dict[str, Any]) -> Optional[str]:
         # Exclude any non-null → include only null
         return f"{col} IS NULL"
     if op == 'lt':
-        # Exclude values less than threshold → include >=
+        # Exclude small → include >=
         return f"{col} >= {rule['value']}"
     if op == 'gt':
-        # Exclude values greater than threshold → include <=
+        # Exclude large → include <=
         return f"{col} <= {rule['value']}"
     return None
 
@@ -89,8 +89,8 @@ def generate_sql() -> str:
         if not clauses:
             continue
 
-        # Wrap combined WHERE clauses in parentheses
-        where_sql = "(\n    " + " AND\n    ".join(clauses) + "\n)"
+        # Inline all clauses on one line
+        where_sql = " AND ".join(clauses)
         view_name = f"{table}_aerospace_filtered"
 
         sql_parts.extend([

@@ -3,6 +3,7 @@
 # Exclusion rules to filter out non-industrial/non-aerospace features
 
 defaults:
+  # Residential & consumer-focused
   - column: landuse
     values: ['residential', 'retail', 'commercial']
   - column: building
@@ -16,6 +17,7 @@ defaults:
   - column: leisure
     values: ['park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course']
 
+  # Infrastructure not relevant
   - column: highway
     operator: is_not_null
   - column: railway
@@ -27,11 +29,13 @@ defaults:
   - column: barrier
     operator: is_not_null
 
+  # Agricultural & extractive
   - column: landuse
     values: ['farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill']
   - column: man_made
     values: ['water_tower', 'water_works', 'sewage_plant']
 
+  # Size filters
   - column: building_area
     operator: lt
     value: 100

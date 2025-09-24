@@ -22,27 +22,26 @@ def load_scoring_config() -> tuple[Dict[str, Any], Dict[str, Any]]:
 
 
 def generate_text_search_condition(column: str, keywords: List[str]) -> str:
-    """Generate text search condition for keywords in a column."""
-    conds = [f"LOWER({column}) LIKE LOWER('%{kw}%')" for kw in keywords]
-    return f"({' OR '.join(conds)})"
-
+    conditions = []
+    for kw in keywords:
+        conditions.append("LOWER({col}) LIKE LOWER('%{kw}%')".format(col=column, kw=kw))
+    return "(" + " OR ".join(conditions) + ")"
 
 def generate_exact_match_condition(column: str, values: List[str]) -> str:
-    """Generate exact match condition."""
     if '*' in values:
-        return f"{column} IS NOT NULL"
-    quoted = ", ".join(f"'{v}'" for v in values)
-    return f"{column} IN ({quoted})"
+        return "{col} IS NOT NULL".format(col=column)
+    quoted = ", ".join("'{v}'".format(v=v) for v in values)
+    return "{col} IN ({vals})".format(col=column, vals=quoted)
 
 
 def generate_prefix_condition(column: str, prefixes: List[str]) -> str:
-    """Generate prefix match condition (for postcode areas)."""
-    conds = [f"UPPER({column}) LIKE '{p}%'" for p in prefixes]
-    return f"({' OR '.join(conds)})"
+    conditions = []
+    for p in prefixes:
+        conditions.append("UPPER({}) LIKE '{}%'".format(column, p))
+    return "({})".format(' OR '.join(conditions))
 
 
 def check_column_exists(schema: Dict[str, Any], table: str, column: str) -> bool:
-    """Check if column exists in table."""
     info = schema.get('tables', {}).get(table, {})
     if not info.get('exists'):
         return False
@@ -50,14 +49,13 @@ def check_column_exists(schema: Dict[str, Any], table: str, column: str) -> bool
 
 
 def generate_scoring_case_parts(schema: Dict[str, Any], table: str,
-                                scoring_rules: Dict[str, Any]) -> List[str]:
-    """Generate WHEN clauses for positive scoring rules."""
-    parts: List[str] = []
-    for name, cfg in scoring_rules.items():
+                                rules: Dict[str, Any]) -> List[str]:
+    parts = []
+    for name, cfg in rules.items():
         if name == 'keyword_bonuses':
             continue
         weight = cfg.get('weight', 0)
-        conds: List[str] = []
+        conds = []
         for cond in cfg.get('conditions', []):
             for field, vals in cond.items():
                 if field == 'postcode_area':
@@ -65,7 +63,7 @@ def generate_scoring_case_parts(schema: Dict[str, Any], table: str,
                     if check_column_exists(schema, table, col):
                         conds.append(generate_prefix_condition(col, vals))
                 elif field.endswith('_contains'):
-                    col = field.replace('_contains', '')
+                    col = field.replace('_contains','')
                     if check_column_exists(schema, table, col):
                         conds.append(generate_text_search_condition(col, vals))
                 else:
@@ -77,127 +75,114 @@ def generate_scoring_case_parts(schema: Dict[str, Any], table: str,
 
 
 def generate_keyword_bonus_expressions(schema: Dict[str, Any], table: str,
-                                       keyword_bonuses: Dict[str, Any]) -> List[str]:
-    """Generate CASE expressions for keyword bonuses."""
-    exprs: List[str] = []
-    for _, cfg in keyword_bonuses.items():
+                                       bonuses: Dict[str, Any]) -> List[str]:
+    exprs = []
+    for cfg in bonuses.values():
         weight = cfg.get('weight', 0)
         kws = cfg.get('keywords', [])
-        fields = [f for f in ['name','operator','description','brand'] if check_column_exists(schema, table, f)]
-        if not fields or not kws:
-            continue
+        fields = [f for f in ['name','operator','description','brand']
+                  if check_column_exists(schema, table, f)]
         conds = []
         for f in fields:
-            conds.extend([f"LOWER({f}) LIKE LOWER('%{kw}%')" for kw in kws])
-        exprs.append(f"CASE WHEN ({' OR '.join(conds)}) THEN {weight} ELSE 0 END")
+            conds += [f"LOWER({f}) LIKE LOWER('%{kw}%')" for kw in kws]
+        if conds:
+            exprs.append(f"CASE WHEN ({' OR '.join(conds)}) THEN {weight} ELSE 0 END")
     return exprs
 
 
 def generate_negative_expressions(schema: Dict[str, Any], table: str,
-                                  negative_signals: Dict[str, Any]) -> List[str]:
-    """Generate CASE expressions for negative and contextual negative signals."""
-    exprs: List[str] = []
-    # strong, medium, weak, service_negatives
+                                  signals: Dict[str, Any]) -> List[str]:
+    exprs = []
     for key in ['strong_negatives','medium_negatives','weak_negatives','service_negatives']:
-        cfg = negative_signals.get(key, {})
-        weight = cfg.get('weight', 0)
-        conds: List[str] = []
-        for cond in cfg.get('conditions', []):
+        cfg = signals.get(key, {})
+        weight = cfg.get('weight',0)
+        conds=[]
+        for cond in cfg.get('conditions',[]):
             for field, vals in cond.items():
                 if field.endswith('_contains'):
-                    col = field.replace('_contains','')
-                    if check_column_exists(schema, table, col):
-                        conds.append(generate_text_search_condition(col, vals))
+                    col=field.replace('_contains','')
+                    if check_column_exists(schema,table,col):
+                        conds.append(generate_text_search_condition(col,vals))
                 else:
-                    if check_column_exists(schema, table, field):
-                        expr = generate_exact_match_condition(field, vals)
-                        conds.append(expr)
+                    if check_column_exists(schema,table,field):
+                        conds.append(generate_exact_match_condition(field,vals))
         if conds:
             exprs.append(f"CASE WHEN ({' OR '.join(conds)}) THEN {weight} ELSE 0 END")
     # contextual_negatives
-    for cfg in negative_signals.get('contextual_negatives', {}).values():
-        weight = cfg.get('weight', 0)
-        conds_all: List[str] = []
-        for cond in cfg.get('conditions', []):
+    for cfg in signals.get('contextual_negatives',{}).values():
+        weight=cfg.get('weight',0)
+        all_conds=[]
+        for cond in cfg.get('conditions',[]):
             for field, vals in cond.items():
                 if field in ['building_area','way_area']:
-                    op = vals[0] if isinstance(vals, list) else vals
-                    val = op[1:]
+                    op=vals if isinstance(vals,str) else vals[0]
+                    val=op[1:]
                     if op.startswith('<'):
-                        conds_all.append(f"{field} < {val}")
+                        all_conds.append(f"{field} < {val}")
                     elif op.startswith('>'):
-                        conds_all.append(f"{field} > {val}")
+                        all_conds.append(f"{field} > {val}")
                 elif field.endswith('_contains'):
-                    col = field.replace('_contains','')
-                    if check_column_exists(schema, table, col):
-                        conds_all.append(generate_text_search_condition(col, vals))
+                    col=field.replace('_contains','')
+                    if check_column_exists(schema,table,col):
+                        all_conds.append(generate_text_search_condition(col,vals))
                 else:
-                    if check_column_exists(schema, table, field):
-                        conds_all.append(generate_exact_match_condition(field, vals))
-        if conds_all:
-            exprs.append(f"CASE WHEN ({' AND '.join(conds_all)}) THEN {weight} ELSE 0 END")
+                    if check_column_exists(schema,table,field):
+                        all_conds.append(generate_exact_match_condition(field,vals))
+        if all_conds:
+            exprs.append(f"CASE WHEN ({' AND '.join(all_conds)}) THEN {weight} ELSE 0 END")
     return exprs
 
 
 def generate_complete_scoring_expression(schema: Dict[str, Any], table: str,
                                          scoring: Dict[str, Any],
                                          negative: Dict[str, Any]) -> str:
-    """Combine positive, keyword, and negative scoring into one expression."""
-    pos = generate_scoring_case_parts(schema, table, scoring['scoring_rules'])
-    bonus = generate_keyword_bonus_expressions(schema, table, scoring['keyword_bonuses'])
-    neg = generate_negative_expressions(schema, table, negative)
-
-    all_parts = []
+    pos = generate_scoring_case_parts(schema,table,scoring['scoring_rules'])
+    bonus = generate_keyword_bonus_expressions(schema,table,scoring['keyword_bonuses'])
+    neg = generate_negative_expressions(schema,table,negative)
+    parts = []
     if pos:
-        all_parts.append("CASE\n    " + "\n    ".join(pos) + "\n    ELSE 0\nEND")
-    all_parts.extend(bonus)
-    all_parts.extend(neg)
-
-    if not all_parts:
+        parts.append("CASE\n    "+ "\n    ".join(pos)+"\n    ELSE 0\nEND")
+    parts+=bonus+neg
+    if not parts:
         return "0 AS aerospace_score"
-
-    expr = " +\n    ".join(all_parts)
+    expr=" +\n    ".join(parts)
     return f"(\n    {expr}\n) AS aerospace_score"
 
 
 def generate_matched_keywords_expression(schema: Dict[str, Any], table: str,
                                          scoring: Dict[str, Any]) -> str:
-    """Build array of matched keywords."""
-    parts: List[str] = []
+    parts=[]
     for cfg in scoring['keyword_bonuses'].values():
-        for kw in cfg.get('keywords', []):
-            fields = [f for f in ['name','operator','description','brand'] if check_column_exists(schema, table, f)]
-            conds = [f"LOWER({f}) LIKE LOWER('%{kw}%')" for f in fields]
+        for kw in cfg.get('keywords',[]):
+            fields=[f for f in ['name','operator','description','brand']
+                    if check_column_exists(schema,table,f)]
+            conds=[f"LOWER({f}) LIKE LOWER('%{kw}%')" for f in fields]
             if conds:
                 parts.append(f"CASE WHEN ({' OR '.join(conds)}) THEN '{kw}' END")
     if parts:
-        arr = "ARRAY[" + ", ".join(parts) + "]"
+        arr="ARRAY["+ ", ".join(parts)+ "]"
         return f"array_remove({arr}, NULL) AS matched_keywords"
     return "ARRAY[]::text[] AS matched_keywords"
 
 
 def generate_scoring_sql(schema: Dict[str, Any], scoring: Dict[str, Any],
                          negative: Dict[str, Any]) -> str:
-    """Generate full scoring SQL for each filtered table."""
-    schema_name = schema.get('schema', 'osm_raw')
-    lines: List[str] = [
-        "-- Aerospace Supplier Scoring SQL",
-        "-- Generated from scoring.yaml and negative_signals.yaml\n"
-    ]
-    for table, info in schema['tables'].items():
+    schema_name=schema.get('schema','osm_raw')
+    lines=["-- Aerospace Supplier Scoring SQL",
+           "-- Generated from scoring.yaml and negative_signals.yaml\n"]
+    for table,info in schema['tables'].items():
         if not info.get('exists') or info.get('row_count',0)==0:
             continue
         lines.append(f"-- Scoring for {table}")
-        score_expr = generate_complete_scoring_expression(schema, table, scoring, negative)
-        match_expr = generate_matched_keywords_expression(schema, table, scoring)
-        lines.extend([
+        score_expr=generate_complete_scoring_expression(schema,table,scoring,negative)
+        match_expr=generate_matched_keywords_expression(schema,table,scoring)
+        lines+=[
             "SELECT *,",
             f"    {score_expr},",
             f"    {match_expr},",
             f"    '{table}' AS source_table",
             f"FROM {schema_name}.{table}_aerospace_filtered",
-            "WHERE aerospace_score > 0;\n"
-        ])
+            "WHERE aerospace_score > 0;\n"]
     return "\n".join(lines)
 
 
@@ -206,7 +191,7 @@ def main() -> int:
     try:
         scoring, negative = load_scoring_config()
         schema = json.loads(Path('schema.json').read_text())
-        sql = generate_scoring_sql(schema, scoring, negative)
+        sql=generate_scoring_sql(schema,scoring,negative)
         Path('scoring.sql').write_text(sql)
         print("✓ Scoring SQL generated: scoring.sql")
         return 0
@@ -215,5 +200,5 @@ def main() -> int:
         return 1
 
 
-if __name__ == "__main__":
+if __name__=="__main__":
     exit(main())

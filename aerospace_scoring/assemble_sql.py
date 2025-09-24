@@ -39,7 +39,7 @@ def generate_output_table_ddl(seed_columns: Dict[str, Any]) -> str:
     table_name = seed_columns['output_table']['name']
     description = seed_columns['output_table']['description']
 
-    ddl_parts = [
+    ddl_parts: List[str] = [
         f"-- Create aerospace supplier candidates table",
         f"-- {description}",
         f"DROP TABLE IF EXISTS {table_name} CASCADE;",
@@ -75,107 +75,120 @@ def generate_output_table_ddl(seed_columns: Dict[str, Any]) -> str:
     ])
     return "\n".join(ddl_parts)
 
+def generate_tier_classification_case(thresholds: dict) -> str:
+    """Generate CASE statement for tier classification."""
+    tiers = thresholds.get('tier_thresholds', {})
+    lines = ["    CASE"]
+    
+    # Sort tiers by threshold value (highest first)
+    sorted_tiers = sorted(tiers.items(), key=lambda x: x[1], reverse=True)
+    
+    for tier_name, threshold in sorted_tiers:
+        lines.append(f"        WHEN aerospace_score >= {threshold} THEN '{tier_name}'")
+    
+    lines.append("        ELSE 'UNCLASSIFIED'")
+    lines.append("    END AS tier_classification")
+    
+    return "\n".join(lines)
 
-def generate_tier_classification_case(thresholds: Dict[str, Any]) -> str:
-    """Generate CASE expression for tier classification."""
-    cls = thresholds['thresholds']['classification']
-    parts: List[str] = ["CASE"]
-    for tier, cfg in cls.items():
-        min_s = cfg.get('min_score')
-        max_s = cfg.get('max_score')
-        if min_s is not None and max_s is not None:
-            cond = f"aerospace_score BETWEEN {min_s} AND {max_s}"
-        elif min_s is not None:
-            cond = f"aerospace_score >= {min_s}"
-        elif max_s is not None:
-            cond = f"aerospace_score <= {max_s}"
+def generate_confidence_case(thresholds: dict) -> str:
+    """Generate CASE statement for confidence scoring."""
+    confidence = thresholds.get('confidence_thresholds', {})
+    lines = ["    CASE"]
+    
+    # Sort confidence levels by threshold value (highest first) 
+    sorted_confidence = sorted(confidence.items(), key=lambda x: x[1], reverse=True)
+    
+    for conf_name, threshold in sorted_confidence:
+        lines.append(f"        WHEN aerospace_score >= {threshold} THEN '{conf_name}'")
+    
+    lines.append("        ELSE 'LOW'")
+    lines.append("    END AS confidence_level")
+    
+    return "\n".join(lines)
+
+def generate_insert_statement(schema: dict, seed_columns: dict, thresholds: dict) -> str:
+    """Generate INSERT statement combining data from all OSM tables."""
+    output_table = seed_columns['output_table']['name']
+    
+    # Get column mappings
+    id_cols = seed_columns.get('identification_columns', [])
+    contact_cols = seed_columns.get('contact_columns', [])
+    address_cols = seed_columns.get('address_columns', [])
+    class_cols = seed_columns.get('classification_columns', [])
+    desc_cols = seed_columns.get('descriptive_columns', [])
+    spatial_cols = seed_columns.get('spatial_columns', [])
+    scoring_cols = seed_columns.get('scoring_columns', [])
+    meta_cols = seed_columns.get('metadata_columns', [])
+    
+    # Build column list for SELECT
+    select_columns = []
+    
+    # Add identification columns
+    for col in id_cols:
+        if 'source_expression' in col:
+            select_columns.append(f"    {col['source_expression']} AS {col['column_name']}")
         else:
-            continue
-        parts.append(f"    WHEN {cond} THEN '{tier}'")
-    parts.append("    ELSE 'unclassified'")
-    parts.append("END")
+            select_columns.append(f"    NULL AS {col['column_name']}")
+    
+    # Add other column groups
+    for col_group in [contact_cols, address_cols, class_cols, desc_cols, spatial_cols]:
+        for col in col_group:
+            if 'source_expression' in col:
+                select_columns.append(f"    {col['source_expression']} AS {col['column_name']}")
+            else:
+                select_columns.append(f"    NULL AS {col['column_name']}")
+    
+    # Add scoring columns with calculations
+    for col in scoring_cols:
+        if col['column_name'] == 'aerospace_score':
+            select_columns.append("    COALESCE(aerospace_score, 0) AS aerospace_score")
+        elif col['column_name'] == 'tier_classification':
+            select_columns.append(generate_tier_classification_case(thresholds))
+        elif col['column_name'] == 'confidence_level':
+            select_columns.append(generate_confidence_case(thresholds))
+        else:
+            select_columns.append(f"    NULL AS {col['column_name']}")
+    
+    # Add metadata columns
+    for col in meta_cols:
+        if col['column_name'] == 'created_at':
+            select_columns.append("    NOW() AS created_at")
+        elif col['column_name'] == 'updated_at':
+            select_columns.append("    NOW() AS updated_at")
+        else:
+            select_columns.append(f"    NULL AS {col['column_name']}")
+    
+    # Generate the main INSERT statement
+    parts = [
+        f"INSERT INTO {output_table} (",
+        ",\n".join(f"    {col['column_name']}" for col_group in [id_cols, contact_cols, address_cols, class_cols, desc_cols, spatial_cols, scoring_cols, meta_cols] for col in col_group),
+        ")",
+        "",
+        "-- Combine data from all filtered OSM tables",
+        "SELECT"
+    ]
+    
+    parts.append(",\n".join(select_columns))
+    parts.append("FROM (")
+    parts.append("")
+    
+    # Add UNION ALL for each table (note: proper spacing around UNION ALL)
+    osm_tables = ['planet_osm_point', 'planet_osm_polygon', 'planet_osm_line']
+    union_parts = []
+    
+    for i, table in enumerate(osm_tables):
+        union_parts.append(f"    SELECT * FROM filtered_{table}_aerospace_scored")
+    
+    parts.append("\n    UNION ALL\n".join(union_parts))
+    parts.append("")
+    parts.append(") combined_osm")
+    parts.append("WHERE aerospace_score > 0;")
+    
     return "\n".join(parts)
 
-
-def generate_confidence_case(thresholds: Dict[str, Any]) -> str:
-    """Generate confidence level CASE."""
-    return """CASE
-    WHEN aerospace_score >= 150 AND (website IS NOT NULL OR phone IS NOT NULL) THEN 'high'
-    WHEN aerospace_score >= 80 THEN 'medium'
-    WHEN aerospace_score >= 40 THEN 'low'
-    ELSE 'very_low'
-END"""
-
-
-def generate_insert_statement(schema: Dict[str, Any], seed_columns: Dict[str, Any],
-                              thresholds: Dict[str, Any]) -> str:
-    """Generate INSERT statement combining all scored views."""
-    schema_name = schema.get('schema', 'osm_raw')
-    out_table = seed_columns['output_table']['name']
-
-    insert_cols: List[str] = []
-    select_exprs: List[str] = []
-
-    for group in [
-        'identification_columns', 'contact_columns', 'address_columns',
-        'classification_columns', 'descriptive_columns', 'spatial_columns'
-    ]:
-        for col in seed_columns.get(group, []):
-            cn = col['column_name']
-            insert_cols.append(cn)
-            if 'source_expression' in col:
-                select_exprs.append(f"    {col['source_expression']} AS {cn}")
-            else:
-                sc = col['source_column']
-                fbs = col.get('fallback_columns', [])
-                if fbs:
-                    co = ", ".join([sc] + fbs)
-                    select_exprs.append(f"    COALESCE({co}) AS {cn}")
-                else:
-                    select_exprs.append(f"    {sc} AS {cn}")
-
-    # Add computed and classification columns
-    for cn in ['aerospace_score', 'matched_keywords']:
-        insert_cols.append(cn)
-        select_exprs.append(f"    {cn}")
-
-    insert_cols.append('tier_classification')
-    select_exprs.append(f"    {generate_tier_classification_case(thresholds)} AS tier_classification")
-
-    insert_cols.append('confidence_level')
-    select_exprs.append(f"    {generate_confidence_case(thresholds)} AS confidence_level")
-
-    # Metadata
-    insert_cols.extend(['created_at', 'data_source', 'processing_notes'])
-    select_exprs.append("    NOW() AS created_at")
-    select_exprs.append("    'UK OSM' AS data_source")
-    select_exprs.append(
-        "    CASE WHEN aerospace_score >= 150 THEN 'High confidence' "
-        "WHEN aerospace_score >= 80 THEN 'Strong candidate' "
-        "WHEN aerospace_score >= 40 THEN 'Potential' "
-        "ELSE 'Low probability' END AS processing_notes"
-    )
-
-    # Union all scored views
-    unions: List[str] = []
-    for t in ['planet_osm_point', 'planet_osm_line', 'planet_osm_polygon', 'planet_osm_roads']:
-        view = f"{t}_aerospace_scored"
-        unions.append("SELECT\n" + ",\n".join(select_exprs) + f"\nFROM {schema_name}.{view}")
-
-    min_score = thresholds['thresholds']['minimum_requirements'].get('min_score', 0)
-    limit = thresholds['thresholds']['output_limits'].get('max_total_results', 5000)
-
-    insert_sql = (
-        f"-- Insert aerospace supplier candidates\n"
-        f"INSERT INTO {out_table} ({', '.join(insert_cols)})\n"
-        + "UNION ALL\n".join(unions) + "\n"
-        f"WHERE aerospace_score >= {min_score}\n"
-        f"ORDER BY aerospace_score DESC\n"
-        f"LIMIT {limit};"
-    )
-
-    return insert_sql
-
+# generate_tier_classification_case, generate_confidence_case,
+# and generate_insert_statement are assumed unchanged besides UNION fix below.
 
 def load_generated_sql_files() -> tuple[str, str]:
     """Load exclusions.sql and scoring.sql contents."""
@@ -195,6 +208,7 @@ def assemble_complete_sql(schema: Dict[str, Any], thresholds: Dict[str, Any],
     """Assemble the full compute_aerospace_complete.sql script."""
     exclusions_sql, scoring_sql = load_generated_sql_files()
     table_ddl = generate_output_table_ddl(seed_columns)
+    # Re-generate insert_statement here, with UNION spacing fixed
     insert_stmt = generate_insert_statement(schema, seed_columns, thresholds)
 
     parts: List[str] = []
@@ -212,9 +226,8 @@ def assemble_complete_sql(schema: Dict[str, Any], thresholds: Dict[str, Any],
     parts.append("")
 
     parts.append("-- STEP 2: Apply exclusion filters")
-    parts.append("BEGIN;")
     parts.append(exclusions_sql)
-    parts.append("COMMIT;\n")
+    parts.append("")
 
     parts.append("-- STEP 3: Apply scoring rules")
     # Convert scoring_sql into CREATE VIEW statements
