@@ -1,4 +1,5 @@
 #!/bin/bash
+
 # ========================================
 # UK OSM Import - MASTER SETUP SCRIPT FOR UK AEROSPACE SUPPLIER SCORING SYSTEM
 # File: was 0Claude_setup_uk_osm_project.sh now 07_aerospace_pipeline.sh
@@ -46,81 +47,54 @@ echo -e "${YELLOW}Creating YAML configuration files...${NC}"
 
 # 1. exclusions.yaml
 cat > aerospace_scoring/exclusions.yaml << 'EOF'
-# Exclusion rules to filter out non-industrial/non-aerospace relevant features
+# Fixed exclusions.yaml - corrected structure and logic
 exclusions:
   residential:
-    - key: landuse
-      values: ['residential', 'retail', 'commercial']
-    - key: building
-      values: ['house', 'apartments', 'residential', 'hotel', 'retail', 'supermarket']
-    - key: amenity
-      values: ['restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'school', 'hospital', 'bank', 'pharmacy']
-    - key: shop
-      values: ['*']
-    - key: tourism
-      values: ['*']
-    - key: leisure
-      values: ['park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course']
+    landuse: ['residential', 'retail', 'commercial']
+    building: ['house', 'apartments', 'residential', 'hotel', 'retail', 'supermarket']
+    amenity: ['restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'school', 'hospital', 'bank', 'pharmacy']
+    shop: ['*']
+    tourism: ['*']
+    leisure: ['park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course']
 
   infrastructure:
-    - key: railway
-      values: ['station', 'halt', 'platform']
-    - key: waterway
-      values: ['*']
-    - key: natural
-      values: ['*']
-    - key: barrier
-      values: ['*']
+    railway: ['station', 'halt', 'platform']
+    # Removed empty waterway and other arrays that cause SQL issues
+    natural: ['forest', 'water', 'wood', 'grassland', 'scrub']
+    barrier: ['fence', 'wall', 'hedge']
 
   primary_sectors:
-    - key: landuse
-      values: ['farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill']
-    - key: man_made
-      values: ['water_tower', 'water_works', 'sewage_plant']
+    landuse: ['farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill']
+    man_made: ['water_tower', 'water_works', 'sewage_plant']
 
-# Positive inclusion overrides
+# Positive inclusion overrides - these bypass exclusions
 overrides:
   aerospace_keywords:
-    - key: name
-      values: ['aerospace', 'aviation', 'aircraft', 'airbus', 'boeing', 'rolls royce', 'bae systems']
-    - key: operator
-      values: ['aerospace', 'aviation', 'aircraft']
-    - key: description
-      values: ['aerospace', 'aviation', 'aircraft', 'defense', 'defence']
+    name: ['aerospace', 'aviation', 'aircraft', 'airbus', 'boeing', 'rolls royce', 'bae systems']
+    operator: ['aerospace', 'aviation', 'aircraft']
+    description: ['aerospace', 'aviation', 'aircraft', 'defense', 'defence']
 
   industrial_overrides:
-    - key: landuse
-      values: ['industrial']
-    - key: building
-      values: ['industrial', 'warehouse', 'factory', 'manufacture']
-    - key: man_made
-      values: ['works', 'factory']
-    - key: industrial
-      values: ['*']
-    - key: office
-      values: ['company', 'research', 'engineering']
+    landuse: ['industrial']
+    building: ['industrial', 'warehouse', 'factory', 'manufacture']
+    man_made: ['works', 'factory']
+    industrial: ['*']
+    office: ['company', 'research', 'engineering']
 
 # Table-specific exclusion rules
 table_exclusions:
   planet_osm_point:
-    - key: amenity
-      values: ['restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'fuel', 'parking']
-    - key: shop
-      values: ['*']
-    - key: tourism
-      values: ['*']
+    amenity: ['restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'fuel', 'parking']
+    shop: ['*']
+    tourism: ['*']
   
   planet_osm_polygon:
-    - key: building
-      values: ['house', 'apartments', 'residential']
-    - key: landuse
-      values: ['residential', 'farmland', 'forest']
+    building: ['house', 'apartments', 'residential']
+    landuse: ['residential', 'farmland', 'forest']
   
   planet_osm_line:
-    - key: highway
-      values: ['footway', 'cycleway', 'path', 'steps']
-    - key: railway
-      values: ['abandoned', 'disused']
+    highway: ['footway', 'cycleway', 'path', 'steps']
+    railway: ['abandoned', 'disused']
 EOF
 
 # 2. scoring.yaml
@@ -434,8 +408,7 @@ echo -e "${YELLOW}Creating Python processing scripts...${NC}"
 cat > aerospace_scoring/load_schema.py << 'EOF'
 #!/usr/bin/env python3
 """
-Database schema inspector for UK OSM data
-Run this first to analyze your database structure
+Database schema inspector for UK OSM data - COLUMN-AWARE VERSION
 """
 
 import psycopg2
@@ -461,63 +434,119 @@ def connect_to_database() -> psycopg2.extensions.connection:
         print(f"✗ Database connection failed: {e}")
         raise
 
-def inspect_osm_tables(conn: psycopg2.extensions.connection) -> Dict[str, Any]:
-    """Inspect OSM tables and their columns."""
+def detect_actual_schema(conn: psycopg2.extensions.connection) -> str:
+    """Detect which schema actually contains the OSM tables."""
     cur = conn.cursor()
     
-    # OSM tables to inspect
+    # Check common schema names
+    schemas_to_check = ['public', 'osm_raw', 'osm']
+    osm_tables = ['planet_osm_point', 'planet_osm_line', 'planet_osm_polygon', 'planet_osm_roads']
+    
+    for schema in schemas_to_check:
+        try:
+            for table in osm_tables:
+                cur.execute("""
+                    SELECT COUNT(*) FROM information_schema.tables 
+                    WHERE table_schema = %s AND table_name = %s
+                """, (schema, table))
+                
+                if cur.fetchone()[0] > 0:
+                    print(f"✓ Found OSM tables in schema: {schema}")
+                    return schema
+        except Exception:
+            continue
+    
+    return 'public'  # Default based on your system
+
+def inspect_osm_tables(conn: psycopg2.extensions.connection) -> Dict[str, Any]:
+    """Inspect OSM tables and their columns - with column awareness."""
+    cur = conn.cursor()
+    
+    actual_schema = 'public'  # We know from diagnostic
     osm_tables = ['planet_osm_point', 'planet_osm_line', 'planet_osm_polygon', 'planet_osm_roads']
     
     schema_info = {
-        'schema': 'osm_raw',
+        'schema': actual_schema,
         'tables': {},
         'summary': {'total_tables': 0, 'total_columns': 0, 'tables_with_data': 0}
     }
     
-    try:
-        with open('config/config.yaml', 'r') as f:
-            config = yaml.safe_load(f)
-        schema_info['schema'] = config['database'].get('schema', 'osm_raw')
-    except:
-        pass
+    # Key columns we care about for aerospace scoring
+    important_columns = [
+        'name', 'operator', 'amenity', 'building', 'landuse', 
+        'industrial', 'office', 'man_made', 'shop', 'tourism', 
+        'website', 'phone', 'addr:postcode', 'addr:street', 'addr:city',
+        'description', 'military', 'craft', 'railway', 'waterway',
+        'natural', 'barrier', 'leisure'
+    ]
     
     for table in osm_tables:
         try:
-            # Get column information
+            # Get ALL columns
             cur.execute("""
                 SELECT column_name, data_type, is_nullable
                 FROM information_schema.columns 
                 WHERE table_schema = %s AND table_name = %s
                 ORDER BY ordinal_position
-            """, (schema_info['schema'], table))
+            """, (actual_schema, table))
             
-            columns = []
+            all_columns = []
+            important_found = []
+            
             for row in cur.fetchall():
-                columns.append({
+                col_info = {
                     'name': row[0],
                     'type': row[1],
                     'nullable': row[2] == 'YES'
-                })
+                }
+                all_columns.append(col_info)
+                
+                # Track important columns for aerospace analysis
+                if row[0] in important_columns:
+                    important_found.append(row[0])
             
-            if columns:
+            if all_columns:
                 # Get row count
-                cur.execute(f"SELECT count(*) FROM {schema_info['schema']}.{table}")
+                cur.execute(f"SELECT count(*) FROM {actual_schema}.{table}")
                 row_count = cur.fetchone()[0]
+                
+                # Sample data to understand content
+                sample_data = []
+                if row_count > 0:
+                    # Sample query with only existing important columns
+                    existing_important = [col for col in important_found if col in ['name', 'amenity', 'landuse', 'office', 'industrial']]
+                    if existing_important:
+                        sample_columns = ', '.join(existing_important)
+                        try:
+                            cur.execute(f"""
+                                SELECT {sample_columns}
+                                FROM {actual_schema}.{table} 
+                                WHERE name IS NOT NULL
+                                LIMIT 3
+                            """)
+                            sample_data = cur.fetchall()
+                        except Exception as e:
+                            print(f"  Warning: Could not sample data from {table}: {e}")
                 
                 schema_info['tables'][table] = {
                     'exists': True,
-                    'columns': columns,
-                    'column_count': len(columns),
-                    'row_count': row_count
+                    'columns': all_columns,
+                    'column_count': len(all_columns),
+                    'row_count': row_count,
+                    'important_columns_found': important_found,
+                    'sample_data': sample_data
                 }
                 
                 if row_count > 0:
                     schema_info['summary']['tables_with_data'] += 1
                 
-                schema_info['summary']['total_columns'] += len(columns)
+                schema_info['summary']['total_columns'] += len(all_columns)
                 schema_info['summary']['total_tables'] += 1
                 
-                print(f"✓ {table}: {len(columns)} columns, {row_count:,} rows")
+                print(f"✓ {table}: {len(all_columns)} columns, {row_count:,} rows")
+                print(f"  Important columns found: {len(important_found)}/{len(important_columns)}")
+                print(f"  Key columns: {', '.join(important_found[:8])}")
+                
             else:
                 schema_info['tables'][table] = {'exists': False}
                 print(f"✗ {table}: not found")
@@ -531,7 +560,7 @@ def inspect_osm_tables(conn: psycopg2.extensions.connection) -> Dict[str, Any]:
 
 def main():
     """Main function to inspect database schema."""
-    print("Inspecting UK OSM database schema...")
+    print("Inspecting UK OSM database schema with column awareness...")
     
     try:
         conn = connect_to_database()
@@ -542,11 +571,29 @@ def main():
             json.dump(schema_info, f, indent=2, default=str)
         
         conn.close()
-        print("\n✓ Schema inspection completed")
-        print("✓ Schema saved to aerospace_scoring/schema.json")
+        print(f"\n✓ Schema inspection completed")
+        print(f"✓ Using schema: {schema_info['schema']}")
+        print(f"✓ Schema saved to aerospace_scoring/schema.json")
+        
+        # Show summary
+        summary = schema_info['summary']
+        total_records = sum(t.get('row_count', 0) for t in schema_info['tables'].values() if isinstance(t, dict))
+        print(f"\nSummary:")
+        print(f"  Tables with data: {summary['tables_with_data']}")
+        print(f"  Total records: {total_records:,}")
+        print(f"  Schema: {schema_info['schema']}")
+        
+        # Show column analysis
+        print(f"\nColumn Analysis:")
+        for table_name, table_info in schema_info['tables'].items():
+            if isinstance(table_info, dict) and table_info.get('exists'):
+                important_cols = table_info.get('important_columns_found', [])
+                print(f"  {table_name}: {len(important_cols)} aerospace-relevant columns")
         
     except Exception as e:
         print(f"✗ Schema inspection failed: {e}")
+        import traceback
+        traceback.print_exc()
         return 1
     
     return 0
@@ -558,7 +605,7 @@ EOF
 # Create simplified generate_exclusions.py
 cat > aerospace_scoring/generate_exclusions.py << 'EOF'
 #!/usr/bin/env python3
-"""Generate SQL exclusion clauses from exclusions.yaml"""
+"""Generate SQL exclusion clauses from exclusions.yaml - FIXED VERSION"""
 
 import yaml
 import json
@@ -581,7 +628,7 @@ def check_column_exists(schema, table, column):
     return any(col['name'] == column for col in columns)
 
 def generate_exclusion_sql(exclusions, schema):
-    schema_name = schema.get('schema', 'osm_raw')
+    schema_name = schema.get('schema', 'public')  # Fixed: use actual schema
     sql_parts = []
     
     sql_parts.append("-- Aerospace Supplier Exclusion Filters")
@@ -593,26 +640,90 @@ def generate_exclusion_sql(exclusions, schema):
         
         conditions = []
         
-        # Apply general exclusions
-        for category, rules in exclusions['exclusions'].items():
-            for rule in rules:
-                for column, values in rule.items():
-                    if check_column_exists(schema, table_name, column):
-                        if '*' in values:
-                            conditions.append(f"{column} IS NULL")
-                        else:
-                            quoted_values = "', '".join(values)
-                            conditions.append(f"{column} NOT IN ('{quoted_values}')")
+        # Apply general exclusions - FIXED: handle nested structure properly
+        for category_name, category_rules in exclusions['exclusions'].items():
+            for column, values in category_rules.items():
+                if check_column_exists(schema, table_name, column):
+                    # Skip empty value lists entirely - don't generate SQL for them
+                    if not values:
+                        continue
+                    
+                    if '*' in values:
+                        # Exclude all non-null values for this column
+                        conditions.append(f"{column} IS NULL")
+                    else:
+                        # Exclude specific values
+                        quoted_values = "', '".join(values)
+                        conditions.append(f"({column} IS NULL OR {column} NOT IN ('{quoted_values}'))")
         
-        # Create filtered view
-        if conditions:
+        # Apply table-specific exclusions
+        table_exclusions = exclusions.get('table_exclusions', {}).get(table_name, {})
+        for column, values in table_exclusions.items():
+            if check_column_exists(schema, table_name, column):
+                if not values:  # Skip empty lists
+                    continue
+                
+                if '*' in values:
+                    conditions.append(f"{column} IS NULL")
+                else:
+                    quoted_values = "', '".join(values)
+                    conditions.append(f"({column} IS NULL OR {column} NOT IN ('{quoted_values}'))")
+        
+        # Generate override conditions (these BYPASS exclusions)
+        override_conditions = []
+        for override_category, override_rules in exclusions.get('overrides', {}).items():
+            for column, values in override_rules.items():
+                if check_column_exists(schema, table_name, column):
+                    if not values:  # Skip empty lists
+                        continue
+                    
+                    if '*' in values:
+                        override_conditions.append(f"{column} IS NOT NULL")
+                    elif 'aerospace' in str(values).lower() or 'aviation' in str(values).lower():
+                        # Special handling for text search in overrides
+                        text_conditions = []
+                        for value in values:
+                            text_conditions.append(f"LOWER({column}) LIKE LOWER('%{value}%')")
+                        if text_conditions:
+                            override_conditions.append(f"({' OR '.join(text_conditions)})")
+                    else:
+                        quoted_values = "', '".join(values)
+                        override_conditions.append(f"{column} IN ('{quoted_values}')")
+        
+        # Create filtered view with proper logic
+        if conditions or override_conditions:
             view_name = f"{table_name}_aerospace_filtered"
-            where_clause = ' AND '.join(conditions)
+            
+            # Build WHERE clause: (pass exclusions) OR (match overrides)
+            where_parts = []
+            
+            if conditions:
+                exclusions_clause = f"({' AND '.join(conditions)})"
+                where_parts.append(exclusions_clause)
+            
+            if override_conditions:
+                overrides_clause = f"({' OR '.join(override_conditions)})"
+                if where_parts:
+                    where_clause = f"({where_parts[0]} OR {overrides_clause})"
+                else:
+                    where_clause = overrides_clause
+            else:
+                where_clause = where_parts[0] if where_parts else "1=1"
             
             sql_parts.append(f"-- Filtered view for {table_name}")
-            sql_parts.append(f"CREATE OR REPLACE VIEW {schema_name}.{view_name} AS")
+            sql_parts.append(f"DROP VIEW IF EXISTS {schema_name}.{view_name} CASCADE;")
+            sql_parts.append(f"CREATE VIEW {schema_name}.{view_name} AS")
             sql_parts.append(f"SELECT * FROM {schema_name}.{table_name}")
-            sql_parts.append(f"WHERE {where_clause};\n")
+            sql_parts.append(f"WHERE {where_clause};")
+            sql_parts.append(f"-- Row count check:")
+            sql_parts.append(f"-- SELECT COUNT(*) FROM {schema_name}.{view_name};\n")
+        else:
+            # No exclusions for this table - create pass-through view
+            view_name = f"{table_name}_aerospace_filtered"
+            sql_parts.append(f"-- Pass-through view for {table_name} (no exclusions)")
+            sql_parts.append(f"DROP VIEW IF EXISTS {schema_name}.{view_name} CASCADE;")
+            sql_parts.append(f"CREATE VIEW {schema_name}.{view_name} AS")
+            sql_parts.append(f"SELECT * FROM {schema_name}.{table_name};\n")
     
     return "\n".join(sql_parts)
 
@@ -621,6 +732,8 @@ def main():
     
     try:
         exclusions, schema = load_configs()
+        print(f"Using schema: {schema.get('schema', 'public')}")
+        
         exclusion_sql = generate_exclusion_sql(exclusions, schema)
         
         with open('aerospace_scoring/exclusions.sql', 'w') as f:
@@ -628,8 +741,16 @@ def main():
         
         print("✓ Exclusion SQL generated: aerospace_scoring/exclusions.sql")
         
+        # Debug: show first few lines
+        lines = exclusion_sql.split('\n')[:10]
+        print("\nFirst 10 lines of generated SQL:")
+        for line in lines:
+            print(f"  {line}")
+        
     except Exception as e:
         print(f"✗ Failed: {e}")
+        import traceback
+        traceback.print_exc()
         return 1
     
     return 0
@@ -1150,6 +1271,115 @@ EOF
 chmod +x aerospace_scoring/*.py
 
 echo -e "${GREEN}✓ Python processing scripts created${NC}"
+
+# Create diagnostic test
+cat > diagnostic_test.sh << 'EOF'
+#!/bin/bash
+# diagnostic_test.sh - Test individual components of aerospace scoring - FIXED
+
+set -euo pipefail
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+echo -e "${BLUE}=== Aerospace Pipeline Diagnostic Test ===${NC}"
+
+# Step 1: Test database connection and schema detection
+echo -e "${YELLOW}Step 1: Testing database connection...${NC}"
+if psql -d uk_osm_full -c "SELECT current_schema(), version();" 2>/dev/null; then
+    echo -e "${GREEN}✓ Database connection works${NC}"
+else
+    echo -e "${RED}✗ Database connection failed${NC}"
+    exit 1
+fi
+
+ACTUAL_SCHEMA="public"  # We know it's public from the diagnostic
+
+# Step 2: Check what columns actually exist
+echo -e "${YELLOW}Step 2: Checking available columns...${NC}"
+echo "Columns in planet_osm_point:"
+psql -d uk_osm_full -c "
+SELECT column_name 
+FROM information_schema.columns 
+WHERE table_schema='public' AND table_name='planet_osm_point' 
+  AND column_name IN ('name', 'amenity', 'building', 'landuse', 'industrial', 'office', 'man_made', 'shop', 'tourism')
+ORDER BY column_name;
+"
+
+echo "Columns in planet_osm_polygon:"
+psql -d uk_osm_full -c "
+SELECT column_name 
+FROM information_schema.columns 
+WHERE table_schema='public' AND table_name='planet_osm_polygon' 
+  AND column_name IN ('name', 'amenity', 'building', 'landuse', 'industrial', 'office', 'man_made')
+ORDER BY column_name;
+"
+
+# Step 3: Row counts
+echo -e "${YELLOW}Step 3: Checking row counts...${NC}"
+psql -d uk_osm_full -c "
+SELECT 
+    'planet_osm_point' as table_name, count(*) as rows
+FROM public.planet_osm_point
+UNION ALL
+SELECT 
+    'planet_osm_polygon', count(*)
+FROM public.planet_osm_polygon
+ORDER BY table_name;
+"
+
+# Step 4: Test for aerospace-relevant data (column-safe)
+echo -e "${YELLOW}Step 4: Checking for aerospace-relevant data...${NC}"
+echo "Industrial facilities in polygons:"
+psql -d uk_osm_full -c "
+SELECT COUNT(*) as industrial_count
+FROM public.planet_osm_polygon 
+WHERE landuse = 'industrial' OR building IN ('industrial', 'warehouse', 'factory');
+"
+
+echo "Facilities with aerospace-related names in points (safe query):"
+psql -d uk_osm_full -c "
+SELECT name, amenity, landuse
+FROM public.planet_osm_point 
+WHERE name IS NOT NULL 
+  AND (LOWER(name) LIKE '%aerospace%' 
+       OR LOWER(name) LIKE '%aviation%'
+       OR LOWER(name) LIKE '%aircraft%'
+       OR LOWER(name) LIKE '%engineering%'
+       OR LOWER(name) LIKE '%technology%')
+LIMIT 5;
+"
+
+# Step 5: Test what data we can actually work with
+echo -e "${YELLOW}Step 5: Testing available aerospace-relevant data...${NC}"
+echo "Points with office/industrial tags:"
+psql -d uk_osm_full -c "
+SELECT COUNT(*) as office_industrial_points
+FROM public.planet_osm_point 
+WHERE office IS NOT NULL OR industrial IS NOT NULL OR man_made IS NOT NULL;
+"
+
+echo "Sample of potentially relevant points:"
+psql -d uk_osm_full -c "
+SELECT name, amenity, office, industrial, man_made
+FROM public.planet_osm_point 
+WHERE (office IS NOT NULL OR industrial IS NOT NULL OR man_made IS NOT NULL)
+  AND name IS NOT NULL
+LIMIT 10;
+"
+
+echo ""
+echo -e "${BLUE}=== Diagnostic Complete ===${NC}"
+echo -e "${YELLOW}Schema: public${NC}"
+echo -e "${YELLOW}Key finding: Points table lacks 'building' column - this needs to be handled in the code${NC}"
+EOF
+
+chmod +x diagnostic_test.sh
+
+echo -e "${GREEN}✓ Diagnostic test created${NC}"
 
 # Create README
 cat > aerospace_scoring/README.md << 'EOF'

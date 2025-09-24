@@ -1,75 +1,48 @@
-# Exclusion rules to filter out non-industrial/non-aerospace relevant features
+# Fixed exclusions.yaml - corrected structure and logic
 exclusions:
   residential:
-    - key: landuse
-      values: ['residential', 'retail', 'commercial']
-    - key: building
-      values: ['house', 'apartments', 'residential', 'hotel', 'retail', 'supermarket']
-    - key: amenity
-      values: ['restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'school', 'hospital', 'bank', 'pharmacy']
-    - key: shop
-      values: ['*']
-    - key: tourism
-      values: ['*']
-    - key: leisure
-      values: ['park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course']
+    landuse: ['residential', 'retail', 'commercial']
+    building: ['house', 'apartments', 'residential', 'hotel', 'retail', 'supermarket']
+    amenity: ['restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'school', 'hospital', 'bank', 'pharmacy']
+    shop: ['*']
+    tourism: ['*']
+    leisure: ['park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course']
 
   infrastructure:
-    - key: railway
-      values: ['station', 'halt', 'platform']
-    - key: waterway
-      values: ['*']
-    - key: natural
-      values: ['*']
-    - key: barrier
-      values: ['*']
+    railway: ['station', 'halt', 'platform']
+    # Removed empty waterway and other arrays that cause SQL issues
+    natural: ['forest', 'water', 'wood', 'grassland', 'scrub']
+    barrier: ['fence', 'wall', 'hedge']
 
   primary_sectors:
-    - key: landuse
-      values: ['farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill']
-    - key: man_made
-      values: ['water_tower', 'water_works', 'sewage_plant']
+    landuse: ['farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill']
+    man_made: ['water_tower', 'water_works', 'sewage_plant']
 
-# Positive inclusion overrides
+# Positive inclusion overrides - these bypass exclusions
 overrides:
   aerospace_keywords:
-    - key: name
-      values: ['aerospace', 'aviation', 'aircraft', 'airbus', 'boeing', 'rolls royce', 'bae systems']
-    - key: operator
-      values: ['aerospace', 'aviation', 'aircraft']
-    - key: description
-      values: ['aerospace', 'aviation', 'aircraft', 'defense', 'defence']
+    name: ['aerospace', 'aviation', 'aircraft', 'airbus', 'boeing', 'rolls royce', 'bae systems']
+    operator: ['aerospace', 'aviation', 'aircraft']
+    description: ['aerospace', 'aviation', 'aircraft', 'defense', 'defence']
 
   industrial_overrides:
-    - key: landuse
-      values: ['industrial']
-    - key: building
-      values: ['industrial', 'warehouse', 'factory', 'manufacture']
-    - key: man_made
-      values: ['works', 'factory']
-    - key: industrial
-      values: ['*']
-    - key: office
-      values: ['company', 'research', 'engineering']
+    landuse: ['industrial']
+    building: ['industrial', 'warehouse', 'factory', 'manufacture']
+    man_made: ['works', 'factory']
+    industrial: ['*']
+    office: ['company', 'research', 'engineering']
 
 # Table-specific exclusion rules
 table_exclusions:
   planet_osm_point:
-    - key: amenity
-      values: ['restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'fuel', 'parking']
-    - key: shop
-      values: ['*']
-    - key: tourism
-      values: ['*']
+    amenity: ['restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'fuel', 'parking']
+    shop: ['*']
+    tourism: ['*']
   
   planet_osm_polygon:
-    - key: building
-      values: ['house', 'apartments', 'residential']
-    - key: landuse
-      values: ['residential', 'farmland', 'forest']
+    building: ['house', 'apartments', 'residential']
+    landuse: ['residential', 'farmland', 'forest']
   
   planet_osm_line:
-    - key: highway
-      values: ['footway', 'cycleway', 'path', 'steps']
-    - key: railway
-      values: ['abandoned', 'disused']
+    highway: ['footway', 'cycleway', 'path', 'steps']
+    railway: ['abandoned', 'disused']

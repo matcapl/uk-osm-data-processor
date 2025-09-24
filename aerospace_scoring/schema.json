@@ -276,7 +276,47 @@
         }
       ],
       "column_count": 54,
-      "row_count": 285167
+      "row_count": 285167,
+      "important_columns_found": [
+        "addr:city",
+        "addr:postcode",
+        "addr:street",
+        "amenity",
+        "barrier",
+        "landuse",
+        "leisure",
+        "man_made",
+        "military",
+        "name",
+        "natural",
+        "office",
+        "operator",
+        "railway",
+        "shop",
+        "tourism",
+        "waterway",
+        "website"
+      ],
+      "sample_data": [
+        [
+          null,
+          null,
+          "Crayford Ness",
+          null
+        ],
+        [
+          null,
+          null,
+          "Jenningtree Point",
+          null
+        ],
+        [
+          null,
+          null,
+          "CTRL Wayside Ventilation Shaft",
+          null
+        ]
+      ]
     },
     "planet_osm_line": {
       "exists": true,
@@ -673,7 +713,52 @@
         }
       ],
       "column_count": 78,
-      "row_count": 547691
+      "row_count": 547691,
+      "important_columns_found": [
+        "addr:city",
+        "addr:postcode",
+        "addr:street",
+        "amenity",
+        "barrier",
+        "building",
+        "industrial",
+        "landuse",
+        "leisure",
+        "man_made",
+        "military",
+        "name",
+        "natural",
+        "office",
+        "operator",
+        "railway",
+        "shop",
+        "tourism",
+        "waterway",
+        "website"
+      ],
+      "sample_data": [
+        [
+          null,
+          null,
+          null,
+          "Tilbury Loop Line",
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          "London, Tilbury & Southend Railway",
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          "London, Tilbury & Southend Railway",
+          null
+        ]
+      ]
     },
     "planet_osm_polygon": {
       "exists": true,
@@ -1070,7 +1155,52 @@
         }
       ],
       "column_count": 78,
-      "row_count": 5237
+      "row_count": 5237,
+      "important_columns_found": [
+        "addr:city",
+        "addr:postcode",
+        "addr:street",
+        "amenity",
+        "barrier",
+        "building",
+        "industrial",
+        "landuse",
+        "leisure",
+        "man_made",
+        "military",
+        "name",
+        "natural",
+        "office",
+        "operator",
+        "railway",
+        "shop",
+        "tourism",
+        "waterway",
+        "website"
+      ],
+      "sample_data": [
+        [
+          null,
+          null,
+          null,
+          "Pumphouse",
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          "2",
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          "1",
+          null
+        ]
+      ]
     },
     "planet_osm_roads": {
       "exists": true,
@@ -1467,7 +1597,52 @@
         }
       ],
       "column_count": 78,
-      "row_count": 19748
+      "row_count": 19748,
+      "important_columns_found": [
+        "addr:city",
+        "addr:postcode",
+        "addr:street",
+        "amenity",
+        "barrier",
+        "building",
+        "industrial",
+        "landuse",
+        "leisure",
+        "man_made",
+        "military",
+        "name",
+        "natural",
+        "office",
+        "operator",
+        "railway",
+        "shop",
+        "tourism",
+        "waterway",
+        "website"
+      ],
+      "sample_data": [
+        [
+          null,
+          null,
+          null,
+          "Tilbury Loop Line",
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          "London, Tilbury & Southend Railway",
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          "London, Tilbury & Southend Railway",
+          null
+        ]
+      ]
     }
   },
   "summary": {

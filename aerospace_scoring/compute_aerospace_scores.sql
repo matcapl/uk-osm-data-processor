@@ -1,5 +1,5 @@
 -- UK AEROSPACE SUPPLIER IDENTIFICATION SYSTEM
--- Generated on: 2025-09-24 18:40:07
+-- Generated on: 2025-09-24 19:59:45
 -- Database: public
 
 -- STEP 1: Apply exclusion filters

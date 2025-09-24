@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-09-23 18:09:31",
+  "timestamp": "2025-09-24 19:59:18",
   "config": {
     "database": {
       "name": "uk_osm_full",
@@ -1794,7 +1794,7 @@
       "planet_osm_polygon": "5512 kB",
       "planet_osm_roads": "15 MB"
     },
-    "index_count": 17,
+    "index_count": 21,
     "constraint_count": 5
   },
   "sample_queries": {
@@ -1837,17 +1837,17 @@
         [
           "primary",
           7877,
-          532.8289472463176
+          532.8289472463181
         ],
         [
           "trunk",
           3277,
-          335.4395021024034
+          335.4395021024031
         ],
         [
           "secondary",
           1823,
-          200.99704843563697
+          200.9970484356369
         ],
         [
           "motorway",
