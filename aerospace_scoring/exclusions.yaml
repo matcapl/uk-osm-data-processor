@@ -1,65 +1,75 @@
-# File: aerospace_scoring/exclusions.yaml
----
-# Exclusion rules to filter out non-industrial/non-aerospace features
+# Exclusion rules to filter out non-industrial/non-aerospace relevant features
+exclusions:
+  residential:
+    - key: landuse
+      values: ['residential', 'retail', 'commercial']
+    - key: building
+      values: ['house', 'apartments', 'residential', 'hotel', 'retail', 'supermarket']
+    - key: amenity
+      values: ['restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'school', 'hospital', 'bank', 'pharmacy']
+    - key: shop
+      values: ['*']
+    - key: tourism
+      values: ['*']
+    - key: leisure
+      values: ['park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course']
 
-defaults:
-  # Residential & consumer-focused
-  - column: landuse
-    values: ['residential', 'retail', 'commercial']
-  - column: building
-    values: ['house', 'apartments', 'residential', 'hotel', 'retail', 'supermarket']
-  - column: amenity
-    values: ['restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'school', 'hospital', 'bank', 'pharmacy']
-  - column: shop
-    operator: is_not_null
-  - column: tourism
-    operator: is_not_null
-  - column: leisure
-    values: ['park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course']
+  infrastructure:
+    - key: railway
+      values: ['station', 'halt', 'platform']
+    - key: waterway
+      values: ['*']
+    - key: natural
+      values: ['*']
+    - key: barrier
+      values: ['*']
 
-  # Infrastructure not relevant
-  - column: highway
-    operator: is_not_null
-  - column: railway
-    values: ['station', 'halt', 'platform']
-  - column: waterway
-    operator: is_not_null
-  - column: natural
-    operator: is_not_null
-  - column: barrier
-    operator: is_not_null
+  primary_sectors:
+    - key: landuse
+      values: ['farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill']
+    - key: man_made
+      values: ['water_tower', 'water_works', 'sewage_plant']
 
-  # Agricultural & extractive
-  - column: landuse
-    values: ['farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill']
-  - column: man_made
-    values: ['water_tower', 'water_works', 'sewage_plant']
+# Positive inclusion overrides
+overrides:
+  aerospace_keywords:
+    - key: name
+      values: ['aerospace', 'aviation', 'aircraft', 'airbus', 'boeing', 'rolls royce', 'bae systems']
+    - key: operator
+      values: ['aerospace', 'aviation', 'aircraft']
+    - key: description
+      values: ['aerospace', 'aviation', 'aircraft', 'defense', 'defence']
 
-  # Size filters
-  - column: building_area
-    operator: lt
-    value: 100
-  - column: way_area
-    operator: lt
-    value: 100
+  industrial_overrides:
+    - key: landuse
+      values: ['industrial']
+    - key: building
+      values: ['industrial', 'warehouse', 'factory', 'manufacture']
+    - key: man_made
+      values: ['works', 'factory']
+    - key: industrial
+      values: ['*']
+    - key: office
+      values: ['company', 'research', 'engineering']
 
+# Table-specific exclusion rules
 table_exclusions:
   planet_osm_point:
-    - column: amenity
-      values: ['fuel', 'parking']
-    - column: shop
-      operator: is_not_null
-    - column: tourism
-      operator: is_not_null
-
+    - key: amenity
+      values: ['restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'fuel', 'parking']
+    - key: shop
+      values: ['*']
+    - key: tourism
+      values: ['*']
+  
   planet_osm_polygon:
-    - column: building
+    - key: building
       values: ['house', 'apartments', 'residential']
-    - column: landuse
+    - key: landuse
       values: ['residential', 'farmland', 'forest']
-
+  
   planet_osm_line:
-    - column: highway
+    - key: highway
       values: ['footway', 'cycleway', 'path', 'steps']
-    - column: railway
+    - key: railway
       values: ['abandoned', 'disused']

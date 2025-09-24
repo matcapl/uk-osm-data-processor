@@ -1,99 +1,66 @@
-# aerospace_scoring/scoring.yaml
----
 # Scoring rules for aerospace supplier candidates
-# Higher scores indicate better matches for aerospace suppliers
-
 scoring_rules:
-
+  # Direct aerospace indicators (highest scores)
   direct_aerospace:
     weight: 100
     conditions:
-      - column: name
-        substrings: ['aerospace','aviation','aircraft','airbus','boeing','bae','rolls royce','safran','leonardo','thales']
-      - column: operator
-        substrings: ['aerospace','aviation','aircraft']
-      - column: description
-        substrings: ['aerospace','aviation','aircraft','avionics']
-      - column: office
-        values: ['aerospace','aviation']
+      - name_contains: ['aerospace', 'aviation', 'aircraft', 'airbus', 'boeing', 'bae', 'rolls royce', 'safran', 'leonardo', 'thales']
+      - operator_contains: ['aerospace', 'aviation', 'aircraft']
+      - description_contains: ['aerospace', 'aviation', 'aircraft', 'avionics']
+      - office: ['aerospace', 'aviation']
 
+  # Defense/military contractors (high scores)
   defense:
     weight: 80
     conditions:
-      - column: name
-        substrings: ['defense','defence','military','radar','missile','weapons']
-      - column: description
-        substrings: ['defense','defence','military','security']
-      - column: military
-        operator: is_not_null
-      - column: landuse
-        values: ['military']
+      - name_contains: ['defense', 'defence', 'military', 'radar', 'missile', 'weapons']
+      - description_contains: ['defense', 'defence', 'military', 'security']
+      - military: ['*']
+      - landuse: ['military']
 
+  # High-tech manufacturing (medium-high scores)
   high_tech:
     weight: 70
     conditions:
-      - column: name
-        substrings: ['engineering','technology','systems','electronics','precision','advanced']
-      - column: industrial_type
-        values: ['engineering','electronics','precision','high_tech']
-      - column: man_made
-        values: ['works','factory']
-      - column: office
-        values: ['engineering','research','technology']
-      - column: building
-        values: ['industrial','factory','warehouse']
+      - name_contains: ['engineering', 'technology', 'systems', 'electronics', 'precision', 'advanced']
+      - industrial: ['engineering', 'electronics', 'precision', 'high_tech']
+      - man_made: ['works', 'factory']
+      - office: ['engineering', 'research', 'technology']
+      - building: ['industrial', 'factory', 'warehouse']
 
+  # General manufacturing (medium scores)
   manufacturing:
     weight: 50
     conditions:
-      - column: landuse
-        values: ['industrial']
-      - column: building
-        values: ['industrial','warehouse','manufacture']
-      - column: industrial
-        operator: is_not_null
-      - column: craft
-        values: ['metalworking','electronics','machining']
+      - landuse: ['industrial']
+      - building: ['industrial', 'warehouse', 'manufacture']
+      - industrial: ['*']
+      - craft: ['metalworking', 'electronics', 'machining']
 
+  # Research and development (medium scores)
   research:
     weight: 60
     conditions:
-      - column: name
-        substrings: ['research','development','laboratory','institute','university']
-      - column: office
-        values: ['research','engineering']
-      - column: amenity
-        values: ['research_institute','university']
+      - name_contains: ['research', 'development', 'laboratory', 'institute', 'university']
+      - office: ['research', 'engineering']
+      - amenity: ['research_institute', 'university']
 
-  logistics:
-    weight: 30
-    conditions:
-      - column: name
-        substrings: ['logistics','supply','distribution','freight']
-      - column: building
-        values: ['warehouse']
-      - column: landuse
-        values: ['logistics','transport']
-
+  # Geographic bonuses (UK aerospace clusters)
   geographic_bonuses:
     weight: 20
     conditions:
-      - column: addr_postcode
-        prefixes: ['BA','BS','GL','DE','PR','YO','CB','RG','SL']
+      - postcode_area: ['BA', 'BS', 'GL', 'DE', 'PR', 'YO', 'CB', 'RG', 'SL']
 
+# Keyword scoring bonuses
 keyword_bonuses:
   tier1_keywords:
     weight: 50
-    keywords: ['boeing','airbus','rolls royce','bae systems','leonardo','thales','safran']
+    keywords: ['boeing', 'airbus', 'rolls royce', 'bae systems', 'leonardo', 'thales', 'safran']
   
   tier2_keywords:
     weight: 30
-    keywords: ['aerospace','aviation','aircraft','avionics','turbine','engine']
+    keywords: ['aerospace', 'aviation', 'aircraft', 'avionics', 'turbine', 'engine']
   
   manufacturing_keywords:
     weight: 20
-    keywords: ['precision','machining','casting','forging','composite','materials']
-  
-  technology_keywords:
-    weight: 25
-    keywords: ['engineering','technology','systems','electronics','software','control']
+    keywords: ['precision', 'machining', 'casting', 'forging', 'composite', 'materials']

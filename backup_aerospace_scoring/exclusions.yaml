@@ -1,0 +1,65 @@
+# File: aerospace_scoring/exclusions.yaml
+---
+# Exclusion rules to filter out non-industrial/non-aerospace features
+
+defaults:
+  # Residential & consumer-focused
+  - column: landuse
+    values: ['residential', 'retail', 'commercial']
+  - column: building
+    values: ['house', 'apartments', 'residential', 'hotel', 'retail', 'supermarket']
+  - column: amenity
+    values: ['restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'school', 'hospital', 'bank', 'pharmacy']
+  - column: shop
+    operator: is_not_null
+  - column: tourism
+    operator: is_not_null
+  - column: leisure
+    values: ['park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course']
+
+  # Infrastructure not relevant
+  - column: highway
+    operator: is_not_null
+  - column: railway
+    values: ['station', 'halt', 'platform']
+  - column: waterway
+    operator: is_not_null
+  - column: natural
+    operator: is_not_null
+  - column: barrier
+    operator: is_not_null
+
+  # Agricultural & extractive
+  - column: landuse
+    values: ['farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill']
+  - column: man_made
+    values: ['water_tower', 'water_works', 'sewage_plant']
+
+  # Size filters
+  - column: building_area
+    operator: lt
+    value: 100
+  - column: way_area
+    operator: lt
+    value: 100
+
+table_exclusions:
+  planet_osm_point:
+    - column: amenity
+      values: ['fuel', 'parking']
+    - column: shop
+      operator: is_not_null
+    - column: tourism
+      operator: is_not_null
+
+  planet_osm_polygon:
+    - column: building
+      values: ['house', 'apartments', 'residential']
+    - column: landuse
+      values: ['residential', 'farmland', 'forest']
+
+  planet_osm_line:
+    - column: highway
+      values: ['footway', 'cycleway', 'path', 'steps']
+    - column: railway
+      values: ['abandoned', 'disused']

@@ -1,162 +1,135 @@
-# File: aerospace_scoring/seed_columns.yaml
----
-# Define the columns for the output table and data extraction
-
+# Output table structure and column definitions
 output_table:
   name: "aerospace_supplier_candidates"
   description: "Tier-2 aerospace supplier candidates from UK OSM data"
 
+# Core identification columns
 identification_columns:
   - column_name: "osm_id"
     source_column: "osm_id"
     data_type: "bigint"
     description: "Original OSM object ID"
-
+    
   - column_name: "osm_type"
-    source_expression: "table_name"
+    source_column: "source_table"
     data_type: "varchar(50)"
-    description: "Source OSM table (point/line/polygon/roads)"
-
+    description: "Source OSM table"
+    
   - column_name: "name"
     source_column: "name"
     data_type: "text"
-    description: "Primary name of the entity"
-    fallback_columns: ["operator", "brand", "company"]
-
+    description: "Primary name"
+    fallback_columns: ["operator", "brand"]
+    
   - column_name: "operator"
     source_column: "operator"
     data_type: "text"
-    description: "Operating company or organization"
+    description: "Operating company"
 
+# Contact information
 contact_columns:
   - column_name: "website"
     source_column: "website"
     data_type: "text"
-    description: "Company website URL"
-    fallback_columns: ["contact_website", "url"]
-
+    description: "Website URL"
+    fallback_columns: ["contact:website"]
+    
   - column_name: "phone"
     source_column: "phone"
     data_type: "text"
-    description: "Contact phone number"
-    fallback_columns: ["contact_phone", "telephone"]
+    description: "Phone number"
+    fallback_columns: ["contact:phone"]
 
-  - column_name: "email"
-    source_column: "email"
-    data_type: "text"
-    description: "Contact email address"
-    fallback_columns: ["contact_email"]
-
+# Address components
 address_columns:
   - column_name: "postcode"
-    source_column: "addr_postcode"
+    source_column: "addr:postcode"
     data_type: "varchar(20)"
     description: "UK postal code"
-
+    
   - column_name: "street_address"
-    source_column: "addr_street"
+    source_column: "addr:street"
     data_type: "text"
     description: "Street address"
-
+    
   - column_name: "city"
-    source_column: "addr_city"
+    source_column: "addr:city"
     data_type: "text"
-    description: "City or town"
-    fallback_columns: ["addr_town", "place"]
+    description: "City"
+    fallback_columns: ["addr:town"]
 
-  - column_name: "county"
-    source_column: "addr_county"
-    data_type: "text"
-    description: "County or region"
-    fallback_columns: ["addr_state", "addr_region"]
-
+# Industrial classification
 classification_columns:
   - column_name: "landuse_type"
     source_column: "landuse"
     data_type: "text"
-    description: "Land use classification"
-
+    description: "Land use type"
+    
   - column_name: "building_type"
     source_column: "building"
     data_type: "text"
-    description: "Building type classification"
-
+    description: "Building type"
+    
   - column_name: "industrial_type"
     source_column: "industrial"
     data_type: "text"
-    description: "Specific industrial classification"
-    fallback_columns: ["craft", "manufacturing"]
-
+    description: "Industrial type"
+    fallback_columns: ["craft"]
+    
   - column_name: "office_type"
     source_column: "office"
     data_type: "text"
-    description: "Office/business type"
+    description: "Office type"
 
+# Descriptive information
 descriptive_columns:
   - column_name: "description"
     source_column: "description"
     data_type: "text"
-    description: "Descriptive text about the facility"
+    description: "Description"
 
-  - column_name: "brand"
-    source_column: "brand"
-    data_type: "text"
-    description: "Brand or company name"
-
+# Spatial data
 spatial_columns:
   - column_name: "geometry"
     source_column: "way"
     data_type: "geometry"
-    description: "PostGIS geometry (points, polygons, lines)"
-
-  - column_name: "centroid"
-    source_expression: "ST_Centroid(way)"
-    data_type: "geometry"
-    description: "Centroid point for all geometry types"
-
-  - column_name: "area_sqm"
-    source_expression: "ST_Area(way)"
-    data_type: "double precision"
-    description: "Area in square meters (for polygons)"
-
+    description: "PostGIS geometry"
+    
   - column_name: "latitude"
     source_expression: "ST_Y(ST_Transform(ST_Centroid(way), 4326))"
     data_type: "double precision"
-    description: "Latitude in WGS84"
-
+    description: "Latitude"
+    
   - column_name: "longitude"
     source_expression: "ST_X(ST_Transform(ST_Centroid(way), 4326))"
     data_type: "double precision"
-    description: "Longitude in WGS84"
+    description: "Longitude"
 
+# Scoring columns
 scoring_columns:
   - column_name: "aerospace_score"
     source_expression: "computed"
     data_type: "integer"
-    description: "Computed aerospace relevance score"
-
+    description: "Aerospace relevance score"
+    
+  - column_name: "tier_classification"
+    source_expression: "computed"
+    data_type: "varchar(50)"
+    description: "Supplier tier"
+    
   - column_name: "matched_keywords"
     source_expression: "computed"
     data_type: "text[]"
-    description: "Array of matched aerospace keywords"
+    description: "Matched keywords"
 
-  - column_name: "confidence_level"
-    source_expression: "computed"
-    data_type: "varchar(20)"
-    description: "Confidence level (high/medium/low)"
-
+# Metadata
 metadata_columns:
   - column_name: "created_at"
     source_expression: "NOW()"
     data_type: "timestamp"
-    description: "Record creation timestamp"
-
-  - column_name: "data_source"
-    source_expression: "'UK OSM'"
-    data_type: "varchar(50)"
-    description: "Source of the data"
-
-  - column_name: "processing_notes"
+    description: "Creation timestamp"
+    
+  - column_name: "confidence_level"
     source_expression: "computed"
-    data_type: "text"
-    description: "Notes about data processing and scoring"
+    data_type: "varchar(20)"
+    description: "Confidence level"

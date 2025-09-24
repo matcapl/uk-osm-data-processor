@@ -1,65 +1,33 @@
-# aerospace_scoring/negative_signals.yaml
----
 # Negative indicators that reduce aerospace supplier likelihood
-
 negative_signals:
-
+  # Strong negative indicators
   strong_negatives:
     weight: -50
     conditions:
-      - column: amenity
-        values: ['restaurant','pub','cafe','bar','fast_food','fuel','hospital','school']
-      - column: shop
-        values: '*'       
-        operator: is_not_null
-      - column: tourism
-        values: '*'       
-        operator: is_not_null
-      - column: leisure
-        values: '*'       
-        operator: is_not_null
-      - column: building
-        values: ['house','apartments','residential','hotel','retail']
+      - amenity: ['restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'fuel', 'hospital', 'school']
+      - shop: ['*']
+      - tourism: ['*']
+      - leisure: ['*']
+      - building: ['house', 'apartments', 'residential', 'hotel', 'retail']
 
+  # Medium negative indicators
   medium_negatives:
     weight: -25
     conditions:
-      - column: landuse
-        values: ['residential','retail','commercial','farmland']
-      - column: name
-        substrings: ['restaurant','cafe','pub','hotel','school','church','farm']
+      - landuse: ['residential', 'retail', 'commercial', 'farmland']
+      - name_contains: ['restaurant', 'cafe', 'pub', 'hotel', 'school', 'church', 'farm']
 
-  weak_negatives:
-    weight: -10
-    conditions:
-      - column: building
-        values: ['barn','shed','garage','cabin']
-      - column: landuse
-        values: ['grass','meadow','forest']
-
+  # Service sector indicators
   service_negatives:
     weight: -15
     conditions:
-      - column: office
-        values: ['insurance','finance','estate_agent','lawyer','accountant']
-      - column: amenity
-        values: ['bank','post_office','library']
+      - office: ['insurance', 'finance', 'estate_agent', 'lawyer', 'accountant']
+      - amenity: ['bank', 'post_office', 'library']
 
+# Context-aware negatives
 contextual_negatives:
   small_consumer:
     weight: -30
     conditions:
-      - column: building_area
-        operator: lt
-        value: 500
-      - column: name
-        substrings: ['shop','store','market','centre','services']
-
-  large_non_industrial:
-    weight: -40
-    conditions:
-      - column: way_area
-        operator: gt
-        value: 50000
-      - column: landuse
-        values: ['residential','commercial','retail']
+      - building_area: '<500'
+      - name_contains: ['shop', 'store', 'market', 'centre', 'services']

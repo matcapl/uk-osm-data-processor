@@ -1,10 +1,32 @@
 #!/bin/bash
 # ========================================
 # UK OSM Import - MASTER SETUP SCRIPT FOR UK AEROSPACE SUPPLIER SCORING SYSTEM
-# File: 0Claude_setup_uk_osm_project.sh
+# File: was 0Claude_setup_uk_osm_project.sh now 07_aerospace_pipeline.sh
 # ========================================
 
-set -e
+# To make this work
+# Fixed load_schema.py(?)
+# deleted garbage after last echo (incomplete / stray code likely from load_schema.py(?))
+# Within check_database within run_aerospace_scoring.py :
+# changed cur.execute("SELECT COUNT(*) FROM osm_raw.planet_osm_point LIMIT 1") to cur.execute(f"SELECT COUNT(*) FROM {schema}.planet_osm_point LIMIT 1")
+# added schema and print in 
+# schema = config['database'].get('schema', 'public')
+# print("Using schema:", schema)
+# Changed steps = [python3...] to 
+    # steps = [
+    #     ('uv run aerospace_scoring/load_schema.py', 'Database Schema Analysis'),
+    #     ('uv run aerospace_scoring/generate_exclusions.py', 'Generate Exclusion Rules'),
+    #     ('uv run aerospace_scoring/generate_scoring.py', 'Generate Scoring Rules'),
+    #     ('uv run aerospace_scoring/assemble_sql.py', 'Assemble Complete SQL')
+    # ]
+# Changed scoring_expr = f"(\n        {' +\n        '.join(all_parts)}\n    ) AS aerospace_score" to 
+# joined_parts = ' +\n        '.join(all_parts)
+# scoring_expr = f"(\n        {joined_parts}\n    ) AS aerospace_score"
+# Within run_aerospace_scoring.py 
+# Changed (then changed back again, because it didn't work) cmd = f"psql -h {db_config['host']} ... -f aerospace_scoring/compute_aerospace_scores.sql" to 
+# cmd = f"psql -h {db_config['host']} ... -f aerospace_scoring/compute_aerospace_complete.sql"
+
+set -euo pipefail
 
 # Colors for output
 RED='\033[0;31m'
@@ -26,55 +48,79 @@ echo -e "${YELLOW}Creating YAML configuration files...${NC}"
 cat > aerospace_scoring/exclusions.yaml << 'EOF'
 # Exclusion rules to filter out non-industrial/non-aerospace relevant features
 exclusions:
-  # Exclude residential and consumer-focused features
   residential:
-    - landuse: ['residential', 'retail', 'commercial']
-    - building: ['house', 'apartments', 'residential', 'hotel', 'retail', 'supermarket']
-    - amenity: ['restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'school', 'hospital', 'bank', 'pharmacy']
-    - shop: ['*']
-    - tourism: ['*']
-    - leisure: ['park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course']
+    - key: landuse
+      values: ['residential', 'retail', 'commercial']
+    - key: building
+      values: ['house', 'apartments', 'residential', 'hotel', 'retail', 'supermarket']
+    - key: amenity
+      values: ['restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'school', 'hospital', 'bank', 'pharmacy']
+    - key: shop
+      values: ['*']
+    - key: tourism
+      values: ['*']
+    - key: leisure
+      values: ['park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course']
 
-  # Exclude infrastructure not relevant to aerospace
   infrastructure:
-    - railway: ['station', 'halt', 'platform']
-    - waterway: ['*']
-    - natural: ['*']
-    - barrier: ['*']
+    - key: railway
+      values: ['station', 'halt', 'platform']
+    - key: waterway
+      values: ['*']
+    - key: natural
+      values: ['*']
+    - key: barrier
+      values: ['*']
 
-  # Exclude agricultural and extractive industries
   primary_sectors:
-    - landuse: ['farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill']
-    - man_made: ['water_tower', 'water_works', 'sewage_plant']
+    - key: landuse
+      values: ['farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill']
+    - key: man_made
+      values: ['water_tower', 'water_works', 'sewage_plant']
 
 # Positive inclusion overrides
 overrides:
   aerospace_keywords:
-    - name: ['aerospace', 'aviation', 'aircraft', 'airbus', 'boeing', 'rolls royce', 'bae systems']
-    - operator: ['aerospace', 'aviation', 'aircraft']
-    - description: ['aerospace', 'aviation', 'aircraft', 'defense', 'defence']
+    - key: name
+      values: ['aerospace', 'aviation', 'aircraft', 'airbus', 'boeing', 'rolls royce', 'bae systems']
+    - key: operator
+      values: ['aerospace', 'aviation', 'aircraft']
+    - key: description
+      values: ['aerospace', 'aviation', 'aircraft', 'defense', 'defence']
 
   industrial_overrides:
-    - landuse: ['industrial']
-    - building: ['industrial', 'warehouse', 'factory', 'manufacture']
-    - man_made: ['works', 'factory']
-    - industrial: ['*']
-    - office: ['company', 'research', 'engineering']
+    - key: landuse
+      values: ['industrial']
+    - key: building
+      values: ['industrial', 'warehouse', 'factory', 'manufacture']
+    - key: man_made
+      values: ['works', 'factory']
+    - key: industrial
+      values: ['*']
+    - key: office
+      values: ['company', 'research', 'engineering']
 
 # Table-specific exclusion rules
 table_exclusions:
   planet_osm_point:
-    - amenity: ['restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'fuel', 'parking']
-    - shop: ['*']
-    - tourism: ['*']
+    - key: amenity
+      values: ['restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'fuel', 'parking']
+    - key: shop
+      values: ['*']
+    - key: tourism
+      values: ['*']
   
   planet_osm_polygon:
-    - building: ['house', 'apartments', 'residential']
-    - landuse: ['residential', 'farmland', 'forest']
+    - key: building
+      values: ['house', 'apartments', 'residential']
+    - key: landuse
+      values: ['residential', 'farmland', 'forest']
   
   planet_osm_line:
-    - highway: ['footway', 'cycleway', 'path', 'steps']
-    - railway: ['abandoned', 'disused']
+    - key: highway
+      values: ['footway', 'cycleway', 'path', 'steps']
+    - key: railway
+      values: ['abandoned', 'disused']
 EOF
 
 # 2. scoring.yaml
@@ -384,6 +430,7 @@ echo -e "${YELLOW}Creating Python processing scripts...${NC}"
 # We'll need to create these as separate files since they're quite large
 # For now, create placeholders that reference the artifact content
 
+# Create load_schema.py
 cat > aerospace_scoring/load_schema.py << 'EOF'
 #!/usr/bin/env python3
 """
@@ -402,18 +449,37 @@ def connect_to_database() -> psycopg2.extensions.connection:
     try:
         with open('config/config.yaml', 'r') as f:
             config = yaml.safe_load(f)
-        schema = config['database'].get('schema', 'osm_raw')
-    except:
-        schema = 'osm_raw'
+        db_config = config['database']
+        conn = psycopg2.connect(
+            host=db_config['host'],
+            port=db_config['port'],
+            user=db_config['user'],
+            database=db_config['name']
+        )
+        return conn
+    except Exception as e:
+        print(f"✗ Database connection failed: {e}")
+        raise
+
+def inspect_osm_tables(conn: psycopg2.extensions.connection) -> Dict[str, Any]:
+    """Inspect OSM tables and their columns."""
+    cur = conn.cursor()
     
     # OSM tables to inspect
     osm_tables = ['planet_osm_point', 'planet_osm_line', 'planet_osm_polygon', 'planet_osm_roads']
     
     schema_info = {
-        'schema': schema,
+        'schema': 'osm_raw',
         'tables': {},
         'summary': {'total_tables': 0, 'total_columns': 0, 'tables_with_data': 0}
     }
+    
+    try:
+        with open('config/config.yaml', 'r') as f:
+            config = yaml.safe_load(f)
+        schema_info['schema'] = config['database'].get('schema', 'osm_raw')
+    except:
+        pass
     
     for table in osm_tables:
         try:
@@ -423,7 +489,7 @@ def connect_to_database() -> psycopg2.extensions.connection:
                 FROM information_schema.columns 
                 WHERE table_schema = %s AND table_name = %s
                 ORDER BY ordinal_position
-            """, (schema, table))
+            """, (schema_info['schema'], table))
             
             columns = []
             for row in cur.fetchall():
@@ -435,7 +501,7 @@ def connect_to_database() -> psycopg2.extensions.connection:
             
             if columns:
                 # Get row count
-                cur.execute(f"SELECT count(*) FROM {schema}.{table}")
+                cur.execute(f"SELECT count(*) FROM {schema_info['schema']}.{table}")
                 row_count = cur.fetchone()[0]
                 
                 schema_info['tables'][table] = {
@@ -460,6 +526,7 @@ def connect_to_database() -> psycopg2.extensions.connection:
             schema_info['tables'][table] = {'exists': False, 'error': str(e)}
             print(f"✗ {table}: error - {e}")
     
+    cur.close()
     return schema_info
 
 def main():
@@ -694,7 +761,9 @@ def generate_scoring_sql(scoring, negative_signals, schema):
         all_parts.extend(negative_expressions)
         
         if all_parts:
-            scoring_expr = f"(\n        {' +\n        '.join(all_parts)}\n    ) AS aerospace_score"
+            joined_parts = ' +\n        '.join(all_parts)
+            scoring_expr = f"(\n        {joined_parts}\n    ) AS aerospace_score"
+
         else:
             scoring_expr = "0 AS aerospace_score"
         
@@ -967,6 +1036,7 @@ def check_database():
     try:
         with open('config/config.yaml', 'r') as f:
             config = yaml.safe_load(f)
+        schema = config['database'].get('schema', 'public')
         
         db_config = config['database']
         conn = psycopg2.connect(
@@ -977,7 +1047,7 @@ def check_database():
         )
         
         cur = conn.cursor()
-        cur.execute("SELECT COUNT(*) FROM osm_raw.planet_osm_point LIMIT 1")
+        cur.execute(f"SELECT COUNT(*) FROM {schema}.planet_osm_point LIMIT 1")
         conn.close()
         print("✓ Database connection verified")
         return True
@@ -1016,10 +1086,10 @@ def main():
     
     # Run pipeline steps
     steps = [
-        ('python3 aerospace_scoring/load_schema.py', 'Database Schema Analysis'),
-        ('python3 aerospace_scoring/generate_exclusions.py', 'Generate Exclusion Rules'),
-        ('python3 aerospace_scoring/generate_scoring.py', 'Generate Scoring Rules'),
-        ('python3 aerospace_scoring/assemble_sql.py', 'Assemble Complete SQL')
+        ('uv run aerospace_scoring/load_schema.py', 'Database Schema Analysis'),
+        ('uv run aerospace_scoring/generate_exclusions.py', 'Generate Exclusion Rules'),
+        ('uv run aerospace_scoring/generate_scoring.py', 'Generate Scoring Rules'),
+        ('uv run aerospace_scoring/assemble_sql.py', 'Assemble Complete SQL')
     ]
     
     for i, (cmd, desc) in enumerate(steps, 1):
@@ -1182,25 +1252,4 @@ echo -e "${YELLOW}1. Ensure your UK OSM database is accessible${NC}"
 echo -e "${YELLOW}2. Run: python3 aerospace_scoring/run_aerospace_scoring.py${NC}"
 echo -e "${YELLOW}3. Review results in aerospace_supplier_candidates table${NC}"
 echo ""
-echo -e "${GREEN}The system will identify tier-2 aerospace suppliers from your OSM data!${NC}"_load(f)
-        
-        db_config = config['database']
-        conn = psycopg2.connect(
-            host=db_config['host'],
-            port=db_config['port'],
-            user=db_config['user'],
-            database=db_config['name']
-        )
-        return conn
-    except Exception as e:
-        print(f"Database connection failed: {e}")
-        raise
-
-def inspect_osm_tables(conn: psycopg2.extensions.connection) -> Dict[str, Any]:
-    """Inspect OSM tables and their columns."""
-    cur = conn.cursor()
-    
-    # Get schema from config
-    try:
-        with open('config/config.yaml', 'r') as f:
-            config = yaml.safe
+echo -e "${GREEN}The system will identify tier-2 aerospace suppliers from your OSM data!${NC}"
