@@ -38,6 +38,9 @@ NC='\033[0m'
 
 echo -e "${BLUE}=== UK Aerospace Supplier Scoring System Setup ===${NC}"
 
+echo "Granting view permissions to pipeline user..."
+psql -d uk_osm_full -c "GRANT SELECT ON ALL TABLES IN SCHEMA public TO ukosm_user;"
+
 # Create directory structure
 echo -e "${YELLOW}Creating directory structure...${NC}"
 mkdir -p aerospace_scoring
@@ -47,54 +50,37 @@ echo -e "${YELLOW}Creating YAML configuration files...${NC}"
 
 # 1. exclusions.yaml
 cat > aerospace_scoring/exclusions.yaml << 'EOF'
-# Fixed exclusions.yaml - corrected structure and logic
+# aerospace_scoring/exclusions.yaml - RELAXED VERSION
 exclusions:
-  residential:
-    landuse: ['residential', 'retail', 'commercial']
-    building: ['house', 'apartments', 'residential', 'hotel', 'retail', 'supermarket']
-    amenity: ['restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'school', 'hospital', 'bank', 'pharmacy']
-    shop: ['*']
-    tourism: ['*']
-    leisure: ['park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course']
+  # Only exclude obvious non-industrial categories
+  residential_strict:
+    amenity: ['restaurant', 'pub', 'cafe', 'fast_food', 'school', 'hospital']
+    shop: ['convenience', 'supermarket', 'clothes', 'hairdresser']
+    tourism: ['hotel', 'attraction', 'museum']
+  
+  # Remove problematic empty arrays entirely
+  # infrastructure: {} # REMOVED - was causing issues
 
-  infrastructure:
-    railway: ['station', 'halt', 'platform']
-    # Removed empty waterway and other arrays that cause SQL issues
-    natural: ['forest', 'water', 'wood', 'grassland', 'scrub']
-    barrier: ['fence', 'wall', 'hedge']
-
-  primary_sectors:
-    landuse: ['farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill']
-    man_made: ['water_tower', 'water_works', 'sewage_plant']
-
-# Positive inclusion overrides - these bypass exclusions
 overrides:
+  # Aerospace keywords - expanded and case-insensitive ready
   aerospace_keywords:
-    name: ['aerospace', 'aviation', 'aircraft', 'airbus', 'boeing', 'rolls royce', 'bae systems']
-    operator: ['aerospace', 'aviation', 'aircraft']
-    description: ['aerospace', 'aviation', 'aircraft', 'defense', 'defence']
-
+    name: ['aerospace', 'aviation', 'aircraft', 'airbus', 'boeing', 'bae', 'rolls', 'royce', 'leonardo', 'thales', 'safran']
+    operator: ['aerospace', 'aviation', 'aircraft', 'defense', 'defence']
+  
+  # Keep ALL industrial/office facilities
   industrial_overrides:
-    landuse: ['industrial']
-    building: ['industrial', 'warehouse', 'factory', 'manufacture']
-    man_made: ['works', 'factory']
-    industrial: ['*']
-    office: ['company', 'research', 'engineering']
+    landuse: ['industrial', 'commercial']
+    building: ['industrial', 'warehouse', 'factory', 'office']
+    office: ['*']  # Keep all offices
+    industrial: ['*']  # Keep all industrial
+    man_made: ['works', 'factory', 'tower', 'mast']
 
-# Table-specific exclusion rules
+# Minimal table-specific exclusions
 table_exclusions:
   planet_osm_point:
-    amenity: ['restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'fuel', 'parking']
-    shop: ['*']
-    tourism: ['*']
-  
+    amenity: ['restaurant', 'cafe', 'pub']  # Only obvious non-industrial
   planet_osm_polygon:
-    building: ['house', 'apartments', 'residential']
-    landuse: ['residential', 'farmland', 'forest']
-  
-  planet_osm_line:
-    highway: ['footway', 'cycleway', 'path', 'steps']
-    railway: ['abandoned', 'disused']
+    landuse: ['residential']  # Only residential areas
 EOF
 
 # 2. scoring.yaml
@@ -206,55 +192,36 @@ EOF
 
 # 4. thresholds.yaml
 cat > aerospace_scoring/thresholds.yaml << 'EOF'
-# Scoring thresholds and classification rules
+# Scoring thresholds - TESTING VERSION (zero thresholds)
 thresholds:
-  # Score ranges for classification
   classification:
     tier1_candidate:
-      min_score: 150
-      description: "Highly likely aerospace supplier"
+      min_score: 0
+      description: "Testing - any score"
       
     tier2_candidate:
-      min_score: 80
-      max_score: 149
-      description: "Strong aerospace supplier candidate"
+      min_score: 0
+      max_score: 999
+      description: "Testing - any score"
       
     potential_candidate:
-      min_score: 40
-      max_score: 79
-      description: "Possible supplier"
-      
-    low_probability:
-      min_score: 10
-      max_score: 39
-      description: "Low probability"
-      
-    excluded:
-      max_score: 9
-      description: "Not aerospace relevant"
+      min_score: 0
+      max_score: 999
+      description: "Testing - any score"
 
-  # Minimum requirements
   minimum_requirements:
-    has_name: true
-    not_residential: true
-    has_industrial_indicator: true
-    min_building_area: 50
+    has_name: false
+    not_residential: false
+    has_industrial_indicator: false
+    min_building_area: 0
     in_uk: true
-    min_score: 10
+    min_score: 0  # CRITICAL - was blocking all results
 
-  # Quality filters
-  quality_filters:
-    contact_bonus: 10
-    description_bonus: 5
-    specific_type_bonus: 15
-    generic_name_penalty: -10
-
-  # Output limits
   output_limits:
-    max_tier1_results: 500
-    max_tier2_results: 2000
-    max_total_results: 5000
-    max_per_postcode: 50
+    max_tier1_results: 1000
+    max_tier2_results: 5000
+    max_total_results: 10000
+    max_per_postcode: 100
 EOF
 
 # 5. seed_columns.yaml
@@ -602,158 +569,67 @@ if __name__ == "__main__":
     exit(main())
 EOF
 
-# Create simplified generate_exclusions.py
+# Create a minimal working exclusions generator
 cat > aerospace_scoring/generate_exclusions.py << 'EOF'
 #!/usr/bin/env python3
-"""Generate SQL exclusion clauses from exclusions.yaml - FIXED VERSION"""
+"""Generate SQL exclusion clauses - MINIMAL WORKING VERSION"""
 
 import yaml
 import json
 from pathlib import Path
 
-def load_configs():
-    with open('aerospace_scoring/exclusions.yaml', 'r') as f:
-        exclusions = yaml.safe_load(f)
+def main():
+    print("Generating minimal exclusion SQL...")
     
-    with open('aerospace_scoring/schema.json', 'r') as f:
-        schema = json.load(f)
-    
-    return exclusions, schema
-
-def check_column_exists(schema, table, column):
-    table_info = schema.get('tables', {}).get(table, {})
-    if not table_info.get('exists'):
-        return False
-    columns = table_info.get('columns', [])
-    return any(col['name'] == column for col in columns)
-
-def generate_exclusion_sql(exclusions, schema):
-    schema_name = schema.get('schema', 'public')  # Fixed: use actual schema
-    sql_parts = []
-    
-    sql_parts.append("-- Aerospace Supplier Exclusion Filters")
-    sql_parts.append("-- Generated from exclusions.yaml\n")
-    
-    for table_name, table_info in schema['tables'].items():
-        if not table_info.get('exists') or table_info.get('row_count', 0) == 0:
-            continue
+    try:
+        # Load schema to get actual table info
+        with open('aerospace_scoring/schema.json', 'r') as f:
+            schema = json.load(f)
         
-        conditions = []
+        schema_name = schema.get('schema', 'public')
+        sql_parts = []
         
-        # Apply general exclusions - FIXED: handle nested structure properly
-        for category_name, category_rules in exclusions['exclusions'].items():
-            for column, values in category_rules.items():
-                if check_column_exists(schema, table_name, column):
-                    # Skip empty value lists entirely - don't generate SQL for them
-                    if not values:
-                        continue
-                    
-                    if '*' in values:
-                        # Exclude all non-null values for this column
-                        conditions.append(f"{column} IS NULL")
-                    else:
-                        # Exclude specific values
-                        quoted_values = "', '".join(values)
-                        conditions.append(f"({column} IS NULL OR {column} NOT IN ('{quoted_values}'))")
+        sql_parts.append("-- Minimal Aerospace Exclusion Filters")
+        sql_parts.append("-- Creates pass-through views with minimal filtering\n")
         
-        # Apply table-specific exclusions
-        table_exclusions = exclusions.get('table_exclusions', {}).get(table_name, {})
-        for column, values in table_exclusions.items():
-            if check_column_exists(schema, table_name, column):
-                if not values:  # Skip empty lists
-                    continue
-                
-                if '*' in values:
-                    conditions.append(f"{column} IS NULL")
-                else:
-                    quoted_values = "', '".join(values)
-                    conditions.append(f"({column} IS NULL OR {column} NOT IN ('{quoted_values}'))")
-        
-        # Generate override conditions (these BYPASS exclusions)
-        override_conditions = []
-        for override_category, override_rules in exclusions.get('overrides', {}).items():
-            for column, values in override_rules.items():
-                if check_column_exists(schema, table_name, column):
-                    if not values:  # Skip empty lists
-                        continue
-                    
-                    if '*' in values:
-                        override_conditions.append(f"{column} IS NOT NULL")
-                    elif 'aerospace' in str(values).lower() or 'aviation' in str(values).lower():
-                        # Special handling for text search in overrides
-                        text_conditions = []
-                        for value in values:
-                            text_conditions.append(f"LOWER({column}) LIKE LOWER('%{value}%')")
-                        if text_conditions:
-                            override_conditions.append(f"({' OR '.join(text_conditions)})")
-                    else:
-                        quoted_values = "', '".join(values)
-                        override_conditions.append(f"{column} IN ('{quoted_values}')")
-        
-        # Create filtered view with proper logic
-        if conditions or override_conditions:
+        # Create simple pass-through views for each table
+        for table_name, table_info in schema['tables'].items():
+            if not table_info.get('exists') or table_info.get('row_count', 0) == 0:
+                continue
+            
             view_name = f"{table_name}_aerospace_filtered"
             
-            # Build WHERE clause: (pass exclusions) OR (match overrides)
-            where_parts = []
-            
-            if conditions:
-                exclusions_clause = f"({' AND '.join(conditions)})"
-                where_parts.append(exclusions_clause)
-            
-            if override_conditions:
-                overrides_clause = f"({' OR '.join(override_conditions)})"
-                if where_parts:
-                    where_clause = f"({where_parts[0]} OR {overrides_clause})"
-                else:
-                    where_clause = overrides_clause
+            # Very minimal exclusion - only exclude obvious restaurants/cafes
+            if table_name == 'planet_osm_point':
+                where_clause = "(amenity IS NULL OR amenity NOT IN ('restaurant', 'cafe', 'pub', 'fast_food'))"
             else:
-                where_clause = where_parts[0] if where_parts else "1=1"
+                where_clause = "1=1"  # Keep everything
             
             sql_parts.append(f"-- Filtered view for {table_name}")
             sql_parts.append(f"DROP VIEW IF EXISTS {schema_name}.{view_name} CASCADE;")
             sql_parts.append(f"CREATE VIEW {schema_name}.{view_name} AS")
             sql_parts.append(f"SELECT * FROM {schema_name}.{table_name}")
             sql_parts.append(f"WHERE {where_clause};")
-            sql_parts.append(f"-- Row count check:")
-            sql_parts.append(f"-- SELECT COUNT(*) FROM {schema_name}.{view_name};\n")
-        else:
-            # No exclusions for this table - create pass-through view
-            view_name = f"{table_name}_aerospace_filtered"
-            sql_parts.append(f"-- Pass-through view for {table_name} (no exclusions)")
-            sql_parts.append(f"DROP VIEW IF EXISTS {schema_name}.{view_name} CASCADE;")
-            sql_parts.append(f"CREATE VIEW {schema_name}.{view_name} AS")
-            sql_parts.append(f"SELECT * FROM {schema_name}.{table_name};\n")
-    
-    return "\n".join(sql_parts)
-
-def main():
-    print("Generating exclusion SQL...")
-    
-    try:
-        exclusions, schema = load_configs()
-        print(f"Using schema: {schema.get('schema', 'public')}")
+            sql_parts.append("")
         
-        exclusion_sql = generate_exclusion_sql(exclusions, schema)
-        
+        # Save the SQL
         with open('aerospace_scoring/exclusions.sql', 'w') as f:
-            f.write(exclusion_sql)
+            f.write("\n".join(sql_parts))
         
-        print("✓ Exclusion SQL generated: aerospace_scoring/exclusions.sql")
+        print("✓ Minimal exclusion SQL generated")
         
-        # Debug: show first few lines
-        lines = exclusion_sql.split('\n')[:10]
-        print("\nFirst 10 lines of generated SQL:")
-        for line in lines:
+        # Show what we generated
+        print("\nGenerated SQL preview:")
+        for line in sql_parts[:15]:
             print(f"  {line}")
+        
+        return 0
         
     except Exception as e:
         print(f"✗ Failed: {e}")
         import traceback
         traceback.print_exc()
         return 1
-    
-    return 0
 
 if __name__ == "__main__":
     exit(main())
@@ -762,7 +638,7 @@ EOF
 # Create simplified generate_scoring.py
 cat > aerospace_scoring/generate_scoring.py << 'EOF'
 #!/usr/bin/env python3
-"""Generate SQL scoring expressions from scoring.yaml"""
+"""Generate SQL scoring expressions from scoring.yaml - FIXED VERSION"""
 
 import yaml
 import json
@@ -787,14 +663,8 @@ def check_column_exists(schema, table, column):
     columns = table_info.get('columns', [])
     return any(col['name'] == column for col in columns)
 
-def generate_text_search(column, keywords):
-    conditions = []
-    for keyword in keywords:
-        conditions.append(f"LOWER({column}) LIKE LOWER('%{keyword}%')")
-    return f"({' OR '.join(conditions)})"
-
 def generate_scoring_sql(scoring, negative_signals, schema):
-    schema_name = schema.get('schema', 'osm_raw')
+    schema_name = schema.get('schema', 'public')
     sql_parts = []
     
     sql_parts.append("-- Aerospace Supplier Scoring SQL")
@@ -804,102 +674,71 @@ def generate_scoring_sql(scoring, negative_signals, schema):
         if not table_info.get('exists') or table_info.get('row_count', 0) == 0:
             continue
         
-        # Build scoring CASE statement
-        case_parts = []
+        print(f"Processing {table_name}...")
         
-        # Positive scoring rules
-        for rule_name, rule_config in scoring['scoring_rules'].items():
-            weight = rule_config.get('weight', 0)
-            conditions = rule_config.get('conditions', [])
-            
-            rule_conditions = []
-            for condition in conditions:
-                for field, values in condition.items():
-                    if field.endswith('_contains'):
-                        base_field = field.replace('_contains', '')
-                        if check_column_exists(schema, table_name, base_field):
-                            text_condition = generate_text_search(base_field, values)
-                            rule_conditions.append(text_condition)
-                    elif check_column_exists(schema, table_name, field):
-                        if '*' in values:
-                            rule_conditions.append(f"{field} IS NOT NULL")
-                        else:
-                            quoted_values = "', '".join(values)
-                            rule_conditions.append(f"{field} IN ('{quoted_values}')")
-            
-            if rule_conditions:
-                combined = ' OR '.join(rule_conditions)
-                case_parts.append(f"WHEN ({combined}) THEN {weight}")
+        # Get available columns for this table
+        available_columns = [col['name'] for col in table_info.get('columns', [])]
         
-        # Build keyword bonuses
-        bonus_expressions = []
-        for bonus_name, bonus_config in scoring['keyword_bonuses'].items():
-            weight = bonus_config.get('weight', 0)
-            keywords = bonus_config.get('keywords', [])
+        # Build scoring expressions that only use existing columns
+        scoring_expressions = []
+        
+        # Text-based aerospace keyword matching
+        text_fields = [col for col in ['name', 'operator'] if col in available_columns]
+        if text_fields:
+            aerospace_keywords = ['aerospace', 'aviation', 'aircraft', 'airbus', 'boeing', 'bae', 'rolls royce']
             
-            text_fields = []
-            for field in ['name', 'operator', 'description']:
-                if check_column_exists(schema, table_name, field):
-                    text_fields.append(field)
-            
-            if text_fields and keywords:
-                field_conditions = []
-                for field in text_fields:
-                    keyword_condition = generate_text_search(field, keywords)
-                    field_conditions.append(keyword_condition)
+            for field in text_fields:
+                keyword_conditions = []
+                for keyword in aerospace_keywords:
+                    keyword_conditions.append(f"{field} ILIKE '%{keyword}%'")
                 
-                combined_condition = ' OR '.join(field_conditions)
-                bonus_expressions.append(f"CASE WHEN ({combined_condition}) THEN {weight} ELSE 0 END")
+                if keyword_conditions:
+                    scoring_expressions.append(f"CASE WHEN ({' OR '.join(keyword_conditions)}) THEN 100 ELSE 0 END")
         
-        # Build negative scoring
-        negative_expressions = []
-        for signal_name, signal_config in negative_signals['negative_signals'].items():
-            weight = signal_config.get('weight', 0)
-            conditions = signal_config.get('conditions', [])
+        # Industrial facility bonuses
+        if 'landuse' in available_columns:
+            scoring_expressions.append("CASE WHEN landuse = 'industrial' THEN 50 ELSE 0 END")
+        
+        if 'building' in available_columns:
+            scoring_expressions.append("CASE WHEN building IN ('industrial', 'warehouse', 'factory', 'office') THEN 40 ELSE 0 END")
+        
+        if 'office' in available_columns:
+            scoring_expressions.append("CASE WHEN office IS NOT NULL THEN 30 ELSE 0 END")
+        
+        if 'industrial' in available_columns:
+            scoring_expressions.append("CASE WHEN industrial IS NOT NULL THEN 40 ELSE 0 END")
+        
+        if 'man_made' in available_columns:
+            scoring_expressions.append("CASE WHEN man_made IN ('works', 'factory', 'tower', 'mast') THEN 25 ELSE 0 END")
+        
+        # Technology/engineering name bonuses
+        if 'name' in available_columns:
+            tech_keywords = ['technology', 'engineering', 'systems', 'electronics', 'precision']
+            tech_conditions = []
+            for keyword in tech_keywords:
+                tech_conditions.append(f"name ILIKE '%{keyword}%'")
             
-            signal_conditions = []
-            for condition in conditions:
-                for field, values in condition.items():
-                    if check_column_exists(schema, table_name, field):
-                        if '*' in values:
-                            signal_conditions.append(f"{field} IS NOT NULL")
-                        else:
-                            quoted_values = "', '".join(values)
-                            signal_conditions.append(f"{field} IN ('{quoted_values}')")
-            
-            if signal_conditions:
-                combined = ' OR '.join(signal_conditions)
-                negative_expressions.append(f"CASE WHEN ({combined}) THEN {weight} ELSE 0 END")
+            if tech_conditions:
+                scoring_expressions.append(f"CASE WHEN ({' OR '.join(tech_conditions)}) THEN 35 ELSE 0 END")
         
-        # Combine all scoring components
-        all_parts = []
-        
-        if case_parts:
-            base_case = "CASE\n        " + "\n        ".join(case_parts) + "\n        ELSE 0\n    END"
-            all_parts.append(base_case)
-        
-        all_parts.extend(bonus_expressions)
-        all_parts.extend(negative_expressions)
-        
-        if all_parts:
-            joined_parts = ' +\n        '.join(all_parts)
-            scoring_expr = f"(\n        {joined_parts}\n    ) AS aerospace_score"
-
+        # Generate final score expression
+        if scoring_expressions:
+            final_score = f"({' + '.join(scoring_expressions)})"
         else:
-            scoring_expr = "0 AS aerospace_score"
+            final_score = "10"  # Give minimal score to industrial facilities
         
         # Create scored view
         view_name = f"{table_name}_aerospace_scored"
         sql_parts.append(f"-- Scored view for {table_name}")
-        sql_parts.append(f"CREATE OR REPLACE VIEW {schema_name}.{view_name} AS")
+        sql_parts.append(f"DROP VIEW IF EXISTS {schema_name}.{view_name} CASCADE;")
+        sql_parts.append(f"CREATE VIEW {schema_name}.{view_name} AS")
         sql_parts.append(f"SELECT *,")
-        sql_parts.append(f"    {scoring_expr},")
+        sql_parts.append(f"    {final_score} AS aerospace_score,")
         sql_parts.append(f"    ARRAY[]::text[] AS matched_keywords,")
         sql_parts.append(f"    '{table_name}' AS source_table")
         sql_parts.append(f"FROM {schema_name}.{table_name}_aerospace_filtered")
-        sql_parts.append(f"WHERE (")
-        sql_parts.append(f"    {scoring_expr.replace(' AS aerospace_score', '')}")
-        sql_parts.append(f") > 0;\n")
+        sql_parts.append(f"WHERE {final_score} > 0;")
+        sql_parts.append("")
     
     return "\n".join(sql_parts)
 
@@ -917,6 +756,8 @@ def main():
         
     except Exception as e:
         print(f"✗ Failed: {e}")
+        import traceback
+        traceback.print_exc()
         return 1
     
     return 0
@@ -931,204 +772,99 @@ cat > aerospace_scoring/assemble_sql.py << 'EOF'
 """Assemble complete SQL script for aerospace supplier scoring"""
 
 import yaml
-import json
 from pathlib import Path
 from datetime import datetime
 
-def load_configs():
-    configs = {}
-    for name in ['thresholds', 'seed_columns']:
-        with open(f'aerospace_scoring/{name}.yaml', 'r') as f:
-            configs[name] = yaml.safe_load(f)
-    
-    with open('aerospace_scoring/schema.json', 'r') as f:
-        configs['schema'] = json.load(f)
-    
-    return configs
+def load_table_name():
+    seed = yaml.safe_load(open('aerospace_scoring/seed_columns.yaml'))
+    return seed['output_table']['name']  # e.g. "aerospace_supplier_candidates"
 
-def generate_output_table_ddl(seed_columns):
-    table_name = seed_columns['output_table']['name']
-    
-    ddl = f"""-- Create aerospace supplier candidates table
-DROP TABLE IF EXISTS {table_name} CASCADE;
-CREATE TABLE {table_name} (
-    osm_id BIGINT,
-    osm_type VARCHAR(50),
-    name TEXT,
-    operator TEXT,
-    website TEXT,
-    phone TEXT,
-    postcode VARCHAR(20),
-    street_address TEXT,
-    city TEXT,
-    landuse_type TEXT,
-    building_type TEXT,
-    industrial_type TEXT,
-    office_type TEXT,
-    description TEXT,
-    geometry GEOMETRY,
-    latitude DOUBLE PRECISION,
-    longitude DOUBLE PRECISION,
-    aerospace_score INTEGER,
-    tier_classification VARCHAR(50),
-    matched_keywords TEXT[],
-    confidence_level VARCHAR(20),
-    created_at TIMESTAMP,
-    source_table VARCHAR(50)
+def inline_sql(path, header):
+    return f"-- {header}\n{Path(path).read_text()}"
+
+def generate_ddl(table):
+    return f"""-- STEP 3: Create output table
+DROP TABLE IF EXISTS public.{table} CASCADE;
+CREATE TABLE public.{table} (
+  osm_id BIGINT,
+  osm_type VARCHAR(50),
+  name TEXT,
+  operator TEXT,
+  website TEXT,
+  landuse_type TEXT,
+  geometry GEOMETRY,
+  aerospace_score INTEGER,
+  tier_classification VARCHAR(50),
+  matched_keywords TEXT[],
+  source_table VARCHAR(50),
+  created_at TIMESTAMP
 );
-
--- Create indexes
-CREATE INDEX idx_aerospace_score ON {table_name}(aerospace_score);
-CREATE INDEX idx_tier ON {table_name}(tier_classification);
-CREATE INDEX idx_postcode ON {table_name}(postcode);
-CREATE INDEX idx_geom ON {table_name} USING GIST(geometry);"""
-    
-    return ddl
-
-def generate_insert_sql(schema, thresholds):
-    schema_name = schema.get('schema', 'osm_raw')
-    
-    tier_case = """CASE
-        WHEN aerospace_score >= 150 THEN 'tier1_candidate'
-        WHEN aerospace_score >= 80 THEN 'tier2_candidate'
-        WHEN aerospace_score >= 40 THEN 'potential_candidate'
-        WHEN aerospace_score >= 10 THEN 'low_probability'
-        ELSE 'excluded'
-    END"""
-    
-    confidence_case = """CASE
-        WHEN aerospace_score >= 150 AND (website IS NOT NULL OR phone IS NOT NULL) THEN 'high'
-        WHEN aerospace_score >= 80 THEN 'medium'
-        WHEN aerospace_score >= 40 THEN 'low'
-        ELSE 'very_low'
-    END"""
-    
-    insert_sql = f"""-- Insert aerospace supplier candidates
-INSERT INTO aerospace_supplier_candidates (
-    osm_id, osm_type, name, operator, website, phone, postcode, street_address, city,
-    landuse_type, building_type, industrial_type, office_type, description,
-    geometry, latitude, longitude, aerospace_score, tier_classification,
-    matched_keywords, confidence_level, created_at, source_table
-)
-SELECT 
-    osm_id,
-    source_table AS osm_type,
-    COALESCE(name, operator) AS name,
-    operator,
-    COALESCE(website, "contact:website") AS website,
-    COALESCE(phone, "contact:phone") AS phone,
-    "addr:postcode" AS postcode,
-    "addr:street" AS street_address,
-    COALESCE("addr:city", "addr:town") AS city,
-    landuse AS landuse_type,
-    building AS building_type,
-    industrial AS industrial_type,
-    office AS office_type,
-    description,
-    way AS geometry,
-    ST_Y(ST_Transform(ST_Centroid(way), 4326)) AS latitude,
-    ST_X(ST_Transform(ST_Centroid(way), 4326)) AS longitude,
-    aerospace_score,
-    {tier_case} AS tier_classification,
-    matched_keywords,
-    {confidence_case} AS confidence_level,
-    NOW() AS created_at,
-    source_table
-FROM (
-    SELECT * FROM {schema_name}.planet_osm_point_aerospace_scored
-    UNION ALL
-    SELECT * FROM {schema_name}.planet_osm_polygon_aerospace_scored
-    UNION ALL
-    SELECT * FROM {schema_name}.planet_osm_line_aerospace_scored
-) combined
-WHERE aerospace_score >= 10
-ORDER BY aerospace_score DESC
-LIMIT 5000;"""
-    
-    return insert_sql
-
-def assemble_complete_sql(configs):
-    schema = configs['schema']
-    thresholds = configs['thresholds']
-    seed_columns = configs['seed_columns']
-    
-    # Load component SQL files
-    try:
-        with open('aerospace_scoring/exclusions.sql', 'r') as f:
-            exclusions_sql = f.read()
-    except FileNotFoundError:
-        exclusions_sql = "-- Run generate_exclusions.py first"
-    
-    try:
-        with open('aerospace_scoring/scoring.sql', 'r') as f:
-            scoring_sql = f.read()
-    except FileNotFoundError:
-        scoring_sql = "-- Run generate_scoring.py first"
-    
-    # Generate components
-    table_ddl = generate_output_table_ddl(seed_columns)
-    insert_sql = generate_insert_sql(schema, thresholds)
-    
-    # Assemble final script
-    complete_sql = f"""-- UK AEROSPACE SUPPLIER IDENTIFICATION SYSTEM
--- Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
--- Database: {schema.get('schema', 'osm_raw')}
-
--- STEP 1: Apply exclusion filters
-{exclusions_sql}
-
--- STEP 2: Apply scoring rules
-{scoring_sql}
-
--- STEP 3: Create output table
-{table_ddl}
-
--- STEP 4: Insert final results
-{insert_sql}
-
--- STEP 5: Analysis queries
-SELECT 'Total candidates' as metric, COUNT(*) as value FROM aerospace_supplier_candidates
-UNION ALL
-SELECT 'With contact info', COUNT(*) FROM aerospace_supplier_candidates WHERE website IS NOT NULL OR phone IS NOT NULL
-UNION ALL
-SELECT 'High confidence', COUNT(*) FROM aerospace_supplier_candidates WHERE confidence_level = 'high';
-
--- Classification breakdown
-SELECT tier_classification, COUNT(*), AVG(aerospace_score) as avg_score
-FROM aerospace_supplier_candidates
-GROUP BY tier_classification
-ORDER BY avg_score DESC;
-
--- Top candidates
-SELECT name, tier_classification, aerospace_score, postcode
-FROM aerospace_supplier_candidates
-WHERE tier_classification IN ('tier1_candidate', 'tier2_candidate')
-ORDER BY aerospace_score DESC
-LIMIT 20;
+CREATE INDEX ON public.{table}(aerospace_score);
+CREATE INDEX ON public.{table}(tier_classification);
+CREATE INDEX ON public.{table} USING GIST(geometry);
 """
-    
-    return complete_sql
 
-def main():
-    print("Assembling complete SQL script...")
-    
-    try:
-        configs = load_configs()
-        complete_sql = assemble_complete_sql(configs)
-        
-        with open('aerospace_scoring/compute_aerospace_scores.sql', 'w') as f:
-            f.write(complete_sql)
-        
-        print("✓ Complete SQL script assembled: aerospace_scoring/compute_aerospace_scores.sql")
-        
-    except Exception as e:
-        print(f"✗ Failed: {e}")
-        return 1
-    
-    return 0
+def generate_insert(table):
+    cols = [
+        'osm_id','osm_type','name','operator','website',
+        'landuse_type','geometry','aerospace_score',
+        'tier_classification','matched_keywords',
+        'source_table','created_at'
+    ]
 
-if __name__ == "__main__":
-    exit(main())
+    unions = []
+    for typ in ['point','polygon','line']:
+        view = f"public.planet_osm_{typ}_aerospace_scored"
+        unions.append(f"""SELECT
+  osm_id,
+  '{typ}' AS osm_type,
+  COALESCE(name,operator) AS name,
+  operator,
+  website,
+  landuse AS landuse_type,
+  way AS geometry,
+  aerospace_score,
+  CASE
+    WHEN aerospace_score>=150 THEN 'tier1_candidate'
+    WHEN aerospace_score>=80  THEN 'tier2_candidate'
+    WHEN aerospace_score>=40  THEN 'potential_candidate'
+    WHEN aerospace_score>=10  THEN 'low_probability'
+    ELSE 'excluded'
+  END AS tier_classification,
+  matched_keywords,
+  source_table,
+  NOW() AS created_at
+FROM {view}
+WHERE aerospace_score >= 10""")
+
+    union_sql = "\nUNION ALL\n".join(unions)
+    col_list = ", ".join(cols)
+
+    return f"""-- STEP 4: Insert final results
+INSERT INTO public.{table} ({col_list})
+{union_sql}
+ON CONFLICT DO NOTHING;
+"""
+
+def assemble_sql():
+    table = load_table_name()
+    sql_parts = [
+        "-- UK AEROSPACE SUPPLIER IDENTIFICATION SYSTEM",
+        f"-- Generated on: {datetime.now():%Y-%m-%d %H:%M:%S}",
+        inline_sql('aerospace_scoring/exclusions.sql', 'STEP 1: Exclusion Filters'),
+        inline_sql('aerospace_scoring/scoring.sql',    'STEP 2: Scoring Rules'),
+        generate_ddl(table),
+        generate_insert(table),
+        "-- STEP 5: Analysis queries",
+        f"SELECT 'Total candidates' AS metric, COUNT(*) AS value FROM public.{table};",
+        f"SELECT tier_classification, COUNT(*) AS cnt FROM public.{table} GROUP BY tier_classification ORDER BY cnt DESC;"
+    ]
+    full_sql = "\n\n".join(sql_parts)
+    Path('aerospace_scoring/compute_aerospace_scores.sql').write_text(full_sql)
+    print("✓ compute_aerospace_scores.sql assembled")
+
+if __name__=='__main__':
+    assemble_sql()
 EOF
 
 # Create main execution script
@@ -1176,6 +912,75 @@ def check_database():
         print(f"✗ Database connection failed: {e}")
         return False
 
+def debug_pipeline_before_insert():
+    """Debug the pipeline state before final INSERT"""
+    try:
+        with open('config/config.yaml', 'r') as f:
+            config = yaml.safe_load(f)
+        
+        schema = config['database'].get('schema', 'public')
+        db_config = config['database']
+        conn = psycopg2.connect(
+            host=db_config['host'], port=db_config['port'],
+            user=db_config['user'], database=db_config['name']
+        )
+        conn.autocommit = True
+        cur = conn.cursor()
+        
+        print("="*60)
+        print("PIPELINE DEBUG - BEFORE FINAL INSERT")
+        print("="*60)
+        
+        # Check filtered views
+        filtered_tables = ['planet_osm_point_aerospace_filtered', 'planet_osm_polygon_aerospace_filtered']
+        for table in filtered_tables:
+            try:
+                cur.execute(f"SELECT COUNT(*) FROM {schema}.{table}")
+                count = cur.fetchone()[0]
+                print(f"Filtered view {table}: {count:,} rows")
+            except Exception as e:
+                print(f"ERROR checking {table}: {e}")
+        
+        # Check scored views
+        scored_tables = ['planet_osm_point_aerospace_scored', 'planet_osm_polygon_aerospace_scored']
+        for table in scored_tables:
+            try:
+                cur.execute(f"SELECT COUNT(*), MAX(aerospace_score), MIN(aerospace_score) FROM {schema}.{table}")
+                count, max_score, min_score = cur.fetchone()
+                print(f"Scored view {table}: {count:,} rows, scores {min_score}-{max_score}")
+                
+                if count > 0:
+                    # Show sample
+                    cur.execute(f"SELECT name, aerospace_score FROM {schema}.{table} ORDER BY aerospace_score DESC LIMIT 3")
+                    samples = cur.fetchall()
+                    print(f"  Top samples: {samples}")
+                    
+            except Exception as e:
+                print(f"ERROR checking {table}: {e}")
+        
+        # Test the UNION query
+        try:
+            cur.execute(f"""
+                SELECT COUNT(*) FROM (
+                    SELECT aerospace_score FROM {schema}.planet_osm_point_aerospace_scored
+                    UNION ALL
+                    SELECT aerospace_score FROM {schema}.planet_osm_polygon_aerospace_scored
+                    UNION ALL  
+                    SELECT aerospace_score FROM {schema}.planet_osm_line_aerospace_scored
+                ) combined WHERE aerospace_score >= 0
+            """)
+            total_candidates = cur.fetchone()[0]
+            print(f"Total candidates before INSERT: {total_candidates:,}")
+            
+        except Exception as e:
+            print(f"ERROR testing UNION query: {e}")
+        
+        conn.close()
+        print("="*60)
+        
+    except Exception as e:
+        print(f"DEBUG failed: {e}")
+
 def execute_sql():
     try:
         with open('config/config.yaml', 'r') as f:
@@ -1218,6 +1023,13 @@ def main():
         if not run_step(cmd, desc):
             return 1
     
+    # Debug: dump the assembled SQL
+    print("\n––– Assembled SQL –––")
+    print(Path('aerospace_scoring/compute_aerospace_scores.sql').read_text())
+    print("––––––––––––––––––\n")
+
+    debug_pipeline_before_insert()
+
     # Execute SQL
     print(f"\nStep 5: Executing SQL")
     if not execute_sql():
@@ -1402,22 +1214,22 @@ python3 aerospace_scoring/run_aerospace_scoring.py
 
 1. **Analyze database schema:**
    ```bash
-   python3 aerospace_scoring/load_schema.py
+   uv run aerospace_scoring/load_schema.py
    ```
 
 2. **Generate exclusion filters:**
    ```bash
-   python3 aerospace_scoring/generate_exclusions.py
+   uv run aerospace_scoring/generate_exclusions.py
    ```
 
 3. **Generate scoring rules:**
    ```bash
-   python3 aerospace_scoring/generate_scoring.py
+   uv run aerospace_scoring/generate_scoring.py
    ```
 
 4. **Assemble complete SQL:**
    ```bash
-   python3 aerospace_scoring/assemble_sql.py
+   uv run aerospace_scoring/assemble_sql.py
    ```
 
 5. **Execute the scoring:**

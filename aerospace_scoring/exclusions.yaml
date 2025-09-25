@@ -1,48 +1,31 @@
-# Fixed exclusions.yaml - corrected structure and logic
+# aerospace_scoring/exclusions.yaml - RELAXED VERSION
 exclusions:
-  residential:
-    landuse: ['residential', 'retail', 'commercial']
-    building: ['house', 'apartments', 'residential', 'hotel', 'retail', 'supermarket']
-    amenity: ['restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'school', 'hospital', 'bank', 'pharmacy']
-    shop: ['*']
-    tourism: ['*']
-    leisure: ['park', 'playground', 'sports_centre', 'swimming_pool', 'golf_course']
+  # Only exclude obvious non-industrial categories
+  residential_strict:
+    amenity: ['restaurant', 'pub', 'cafe', 'fast_food', 'school', 'hospital']
+    shop: ['convenience', 'supermarket', 'clothes', 'hairdresser']
+    tourism: ['hotel', 'attraction', 'museum']
+  
+  # Remove problematic empty arrays entirely
+  # infrastructure: {} # REMOVED - was causing issues
 
-  infrastructure:
-    railway: ['station', 'halt', 'platform']
-    # Removed empty waterway and other arrays that cause SQL issues
-    natural: ['forest', 'water', 'wood', 'grassland', 'scrub']
-    barrier: ['fence', 'wall', 'hedge']
-
-  primary_sectors:
-    landuse: ['farmland', 'forest', 'meadow', 'orchard', 'vineyard', 'quarry', 'landfill']
-    man_made: ['water_tower', 'water_works', 'sewage_plant']
-
-# Positive inclusion overrides - these bypass exclusions
 overrides:
+  # Aerospace keywords - expanded and case-insensitive ready
   aerospace_keywords:
-    name: ['aerospace', 'aviation', 'aircraft', 'airbus', 'boeing', 'rolls royce', 'bae systems']
-    operator: ['aerospace', 'aviation', 'aircraft']
-    description: ['aerospace', 'aviation', 'aircraft', 'defense', 'defence']
-
+    name: ['aerospace', 'aviation', 'aircraft', 'airbus', 'boeing', 'bae', 'rolls', 'royce', 'leonardo', 'thales', 'safran']
+    operator: ['aerospace', 'aviation', 'aircraft', 'defense', 'defence']
+  
+  # Keep ALL industrial/office facilities
   industrial_overrides:
-    landuse: ['industrial']
-    building: ['industrial', 'warehouse', 'factory', 'manufacture']
-    man_made: ['works', 'factory']
-    industrial: ['*']
-    office: ['company', 'research', 'engineering']
+    landuse: ['industrial', 'commercial']
+    building: ['industrial', 'warehouse', 'factory', 'office']
+    office: ['*']  # Keep all offices
+    industrial: ['*']  # Keep all industrial
+    man_made: ['works', 'factory', 'tower', 'mast']
 
-# Table-specific exclusion rules
+# Minimal table-specific exclusions
 table_exclusions:
   planet_osm_point:
-    amenity: ['restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'fuel', 'parking']
-    shop: ['*']
-    tourism: ['*']
-  
+    amenity: ['restaurant', 'cafe', 'pub']  # Only obvious non-industrial
   planet_osm_polygon:
-    building: ['house', 'apartments', 'residential']
-    landuse: ['residential', 'farmland', 'forest']
-  
-  planet_osm_line:
-    highway: ['footway', 'cycleway', 'path', 'steps']
-    railway: ['abandoned', 'disused']
+    landuse: ['residential']  # Only residential areas

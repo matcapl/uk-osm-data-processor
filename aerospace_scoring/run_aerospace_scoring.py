@@ -41,6 +41,75 @@ def check_database():
         print(f"✗ Database connection failed: {e}")
         return False
 
+def debug_pipeline_before_insert():
+    """Debug the pipeline state before final INSERT"""
+    try:
+        with open('config/config.yaml', 'r') as f:
+            config = yaml.safe_load(f)
+        
+        schema = config['database'].get('schema', 'public')
+        db_config = config['database']
+        conn = psycopg2.connect(
+            host=db_config['host'], port=db_config['port'],
+            user=db_config['user'], database=db_config['name']
+        )
+        conn.autocommit = True
+        cur = conn.cursor()
+        
+        print("="*60)
+        print("PIPELINE DEBUG - BEFORE FINAL INSERT")
+        print("="*60)
+        
+        # Check filtered views
+        filtered_tables = ['planet_osm_point_aerospace_filtered', 'planet_osm_polygon_aerospace_filtered']
+        for table in filtered_tables:
+            try:
+                cur.execute(f"SELECT COUNT(*) FROM {schema}.{table}")
+                count = cur.fetchone()[0]
+                print(f"Filtered view {table}: {count:,} rows")
+            except Exception as e:
+                print(f"ERROR checking {table}: {e}")
+        
+        # Check scored views
+        scored_tables = ['planet_osm_point_aerospace_scored', 'planet_osm_polygon_aerospace_scored']
+        for table in scored_tables:
+            try:
+                cur.execute(f"SELECT COUNT(*), MAX(aerospace_score), MIN(aerospace_score) FROM {schema}.{table}")
+                count, max_score, min_score = cur.fetchone()
+                print(f"Scored view {table}: {count:,} rows, scores {min_score}-{max_score}")
+                
+                if count > 0:
+                    # Show sample
+                    cur.execute(f"SELECT name, aerospace_score FROM {schema}.{table} ORDER BY aerospace_score DESC LIMIT 3")
+                    samples = cur.fetchall()
+                    print(f"  Top samples: {samples}")
+                    
+            except Exception as e:
+                print(f"ERROR checking {table}: {e}")
+        
+        # Test the UNION query
+        try:
+            cur.execute(f"""
+                SELECT COUNT(*) FROM (
+                    SELECT aerospace_score FROM {schema}.planet_osm_point_aerospace_scored
+                    UNION ALL
+                    SELECT aerospace_score FROM {schema}.planet_osm_polygon_aerospace_scored
+                    UNION ALL  
+                    SELECT aerospace_score FROM {schema}.planet_osm_line_aerospace_scored
+                ) combined WHERE aerospace_score >= 0
+            """)
+            total_candidates = cur.fetchone()[0]
+            print(f"Total candidates before INSERT: {total_candidates:,}")
+            
+        except Exception as e:
+            print(f"ERROR testing UNION query: {e}")
+        
+        conn.close()
+        print("="*60)
+        
+    except Exception as e:
+        print(f"DEBUG failed: {e}")
+
 def execute_sql():
     try:
         with open('config/config.yaml', 'r') as f:
@@ -83,6 +152,13 @@ def main():
         if not run_step(cmd, desc):
             return 1
     
+    # Debug: dump the assembled SQL
+    print("\n––– Assembled SQL –––")
+    print(Path('aerospace_scoring/compute_aerospace_scores.sql').read_text())
+    print("––––––––––––––––––\n")
+
+    debug_pipeline_before_insert()
+
     # Execute SQL
     print(f"\nStep 5: Executing SQL")
     if not execute_sql():
