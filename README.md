@@ -146,3 +146,51 @@ SELECT name, aerospace_score, website, phone, city
 FROM aerospace_supplier_candidates
 WHERE confidence_level = 'high' AND (website IS NOT NULL OR phone IS NOT NULL);
 ```
+
+# Repository Flow: 07_ Pipeline & Aerospace Scoring
+
+## 1. 07_aerospace_pipeline.sh  
+This shell script bootstraps the end-to-end data pipeline against your UK OSM database. Its main stages:  
+1. **Environment Setup**  
+   - Loads environment variables, PostgreSQL connection parameters, and `uv` task runner.  
+2. **Exclusions & Filtering**  
+   - Invokes SQL scripts or inline psql commands to create *filtered* views (`planet_osm_*_aerospace_filtered`) that drop unwanted amenities, landuses, shops, highways, etc.  
+3. **Scoring Views**  
+   - Runs psql scripts to generate *scored* views (`planet_osm_*_aerospace_scored`), computing `aerospace_score` via additive keyword and tag weights.  
+4. **Assemble & Execute Final SQL**  
+   - Concatenates the exclusion and scoring definitions into a single SQL file (`compute_aerospace_scores.sql`).  
+   - Creates the final table `aerospace_supplier_candidates`, defines indexes, and inserts candidates.  
+5. **Verification Queries**  
+   - Executes row-count and tier breakdown queries to log pipeline success and metrics.  
+
+You kick it off with:  
+```bash
+bash 07_aerospace_pipeline.sh
+```
+which runs through all the above steps in sequence.
+
+## 2. aerospace_scoring/run_aerospace_scoring.py  
+This Python script refactors the same process into modular steps with better logging and error handling:  
+1. **Database Connection Check**  
+   - Reads `config/config.yaml`, verifies connectivity by querying a small OSM table.  
+2. **Schema Analysis, Exclusions, Scoring Generation**  
+   - Runs via `uv run` the individual modules:  
+     - `load_schema.py` (inspects OSM tables)  
+     - `generate_exclusions.py` (builds `exclusions.sql`)  
+     - `generate_scoring.py` (builds `scoring.sql`)  
+     - `assemble_sql.py`   (writes `compute_aerospace_scores.sql`)  
+3. **Debug Dump**  
+   - Prints out counts from filtered and scored views to confirm intermediate states.  
+4. **SQL Execution**  
+   - Executes the assembled SQL file via psql, populating `aerospace_supplier_candidates`.  
+5. **Final Verification**  
+   - Queries total candidate count and tier breakdown, logging results and exiting with success/failure.
+
+You invoke it as:
+```bash
+uv run aerospace_scoring/run_aerospace_scoring.py
+```
+
+***
+
+**In essence**, `07_aerospace_pipeline.sh` is a monolithic shell orchestrator, while `run_aerospace_scoring.py` decomposes the same logic into Python-driven, `uv`-managed modules with improved observability. Both paths execute the same core steps: filter, score, assemble, insert, and verify.

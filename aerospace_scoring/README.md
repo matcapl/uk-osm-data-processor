@@ -17,22 +17,22 @@ python3 aerospace_scoring/run_aerospace_scoring.py
 
 1. **Analyze database schema:**
    ```bash
-   uv run aerospace_scoring/load_schema.py
+   python3 aerospace_scoring/load_schema.py
    ```
 
 2. **Generate exclusion filters:**
    ```bash
-   uv run aerospace_scoring/generate_exclusions.py
+   python3 aerospace_scoring/generate_exclusions.py
    ```
 
 3. **Generate scoring rules:**
    ```bash
-   uv run aerospace_scoring/generate_scoring.py
+   python3 aerospace_scoring/generate_scoring.py
    ```
 
 4. **Assemble complete SQL:**
    ```bash
-   uv run aerospace_scoring/assemble_sql.py
+   python3 aerospace_scoring/assemble_sql.py
    ```
 
 5. **Execute the scoring:**
