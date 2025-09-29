@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate SQL exclusion clauses from exclusions.yaml - FIXED VERSION"""
+"""Generate SQL exclusion clauses from exclusions.yaml - CORRECTED VERSION"""
 
 import yaml
 import json
@@ -22,11 +22,12 @@ def check_column_exists(schema, table, column):
     return any(col['name'] == column for col in columns)
 
 def generate_exclusion_sql(exclusions, schema):
-    schema_name = schema.get('schema', 'public')  # Fixed: use actual schema
+    schema_name = schema.get('schema', 'public')
     sql_parts = []
     
     sql_parts.append("-- Aerospace Supplier Exclusion Filters")
-    sql_parts.append("-- Generated from exclusions.yaml\n")
+    sql_parts.append(f"-- Generated from exclusions.yaml for schema: {schema_name}")
+    sql_parts.append("-- Auto-detected actual schema from database\n")
     
     for table_name, table_info in schema['tables'].items():
         if not table_info.get('exists') or table_info.get('row_count', 0) == 0:
@@ -34,21 +35,21 @@ def generate_exclusion_sql(exclusions, schema):
         
         conditions = []
         
-        # Apply general exclusions - FIXED: handle nested structure properly
+        # Apply general exclusions - handle nested structure properly
         for category_name, category_rules in exclusions['exclusions'].items():
             for column, values in category_rules.items():
                 if check_column_exists(schema, table_name, column):
-                    # Skip empty value lists entirely - don't generate SQL for them
+                    # Skip empty value lists entirely
                     if not values:
                         continue
                     
                     if '*' in values:
                         # Exclude all non-null values for this column
-                        conditions.append(f"{column} IS NULL")
+                        conditions.append(f'"{column}" IS NULL')
                     else:
                         # Exclude specific values
                         quoted_values = "', '".join(values)
-                        conditions.append(f"({column} IS NULL OR {column} NOT IN ('{quoted_values}'))")
+                        conditions.append(f'("{column}" IS NULL OR "{column}" NOT IN (\'{quoted_values}\'))')
         
         # Apply table-specific exclusions
         table_exclusions = exclusions.get('table_exclusions', {}).get(table_name, {})
@@ -58,10 +59,10 @@ def generate_exclusion_sql(exclusions, schema):
                     continue
                 
                 if '*' in values:
-                    conditions.append(f"{column} IS NULL")
+                    conditions.append(f'"{column}" IS NULL')
                 else:
                     quoted_values = "', '".join(values)
-                    conditions.append(f"({column} IS NULL OR {column} NOT IN ('{quoted_values}'))")
+                    conditions.append(f'("{column}" IS NULL OR "{column}" NOT IN (\'{quoted_values}\'))')
         
         # Generate override conditions (these BYPASS exclusions)
         override_conditions = []
@@ -72,17 +73,17 @@ def generate_exclusion_sql(exclusions, schema):
                         continue
                     
                     if '*' in values:
-                        override_conditions.append(f"{column} IS NOT NULL")
+                        override_conditions.append(f'"{column}" IS NOT NULL')
                     elif 'aerospace' in str(values).lower() or 'aviation' in str(values).lower():
                         # Special handling for text search in overrides
                         text_conditions = []
                         for value in values:
-                            text_conditions.append(f"LOWER({column}) LIKE LOWER('%{value}%')")
+                            text_conditions.append(f'LOWER("{column}") LIKE LOWER(\'%{value}%\')')
                         if text_conditions:
                             override_conditions.append(f"({' OR '.join(text_conditions)})")
                     else:
                         quoted_values = "', '".join(values)
-                        override_conditions.append(f"{column} IN ('{quoted_values}')")
+                        override_conditions.append(f'"{column}" IN (\'{quoted_values}\')')
         
         # Create filtered view with proper logic
         if conditions or override_conditions:

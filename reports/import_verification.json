@@ -1,9 +1,9 @@
 {
-  "timestamp": "2025-09-24 19:59:18",
+  "timestamp": "2025-09-29 09:49:33",
   "config": {
     "database": {
       "name": "uk_osm_full",
-      "user": "ukosm_user",
+      "user": "a",
       "password": "",
       "host": "localhost",
       "port": 5432,
@@ -25,6 +25,7 @@
       "log_level": "INFO"
     }
   },
+  "actual_schema": "public",
   "table_structure": {
     "planet_osm_point": {
       "exists": true,
@@ -1787,7 +1788,7 @@
     }
   },
   "database_stats": {
-    "database_size": "859 MB",
+    "database_size": "860 MB",
     "table_sizes": {
       "planet_osm_point": "104 MB",
       "planet_osm_line": "296 MB",
@@ -1795,7 +1796,7 @@
       "planet_osm_roads": "15 MB"
     },
     "index_count": 21,
-    "constraint_count": 5
+    "constraint_count": 6
   },
   "sample_queries": {
     "manchester_amenities": {
@@ -1837,22 +1838,22 @@
         [
           "primary",
           7877,
-          532.8289472463181
+          532.8289472463177
         ],
         [
           "trunk",
           3277,
-          335.4395021024031
+          335.4395021024032
         ],
         [
           "secondary",
           1823,
-          200.9970484356369
+          200.99704843563714
         ],
         [
           "motorway",
           21,
-          6.988055520704086
+          6.988055520704085
         ]
       ],
       "result_count": 4,

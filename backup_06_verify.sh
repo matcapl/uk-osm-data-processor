@@ -1,8 +1,28 @@
+#!/bin/bash
+# ========================================
+# UK OSM Import Automation - Phase 6: Verification
+# File: 06_verify_import.sh
+# ========================================
+
+# Changed config/config.yaml schema from osm_raw to public
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+echo -e "${BLUE}=== UK OSM Import Automation - Phase 6: Import Verification ===${NC}"
+
+# Create comprehensive verification script
+cat > scripts/verify/verify_import.py << 'EOF'
 #!/usr/bin/env python3
 """
-Comprehensive UK OSM Import Verification - CORRECTED VERSION
+Comprehensive UK OSM Import Verification
 Verifies data quality, completeness, and generates analysis reports
-Uses config.yaml properly for schema detection
 """
 
 import sys
@@ -17,13 +37,13 @@ import psycopg2
 from pathlib import Path
 
 def connect_to_database(config):
-    """Create database connection using config.yaml."""
+    """Create database connection."""
     db_config = config['database']
     try:
         conn = psycopg2.connect(
             host=db_config['host'],
             port=db_config['port'],
-            user=db_config['user'],
+            user=db_config.get('user', 'a'),
             database=db_config['name']
         )
         return conn
@@ -31,39 +51,11 @@ def connect_to_database(config):
         logging.error(f"Database connection failed: {e}")
         return None
 
-def detect_actual_schema(conn, config):
-    """Detect which schema actually contains OSM data."""
-    config_schema = config['database'].get('schema', 'public')
-    cur = conn.cursor()
-    
-    # Check if config schema has OSM tables with data
-    schemas_to_check = [config_schema, 'public', 'osm_raw', 'osm']
-    osm_tables = ['planet_osm_point', 'planet_osm_line', 'planet_osm_polygon', 'planet_osm_roads']
-    
-    for schema in schemas_to_check:
-        try:
-            for table in osm_tables:
-                cur.execute("""
-                    SELECT COUNT(*) FROM information_schema.tables 
-                    WHERE table_schema = %s AND table_name = %s
-                """, (schema, table))
-                
-                if cur.fetchone()[0] > 0:
-                    # Table exists, check if it has data
-                    cur.execute(f"SELECT COUNT(*) FROM {schema}.{table} LIMIT 1")
-                    if cur.fetchone()[0] > 0:
-                        logging.info(f"✓ Found OSM data in schema: {schema}")
-                        return schema
-        except Exception as e:
-            continue
-    
-    logging.warning(f"No OSM data found, using config default: {config_schema}")
-    return config_schema
-
-def verify_table_structure(conn, schema):
+def verify_table_structure(conn, config):
     """Verify that all expected tables exist with correct structure."""
     logging.info("Verifying table structure...")
     
+    schema = config['database'].get('schema', 'osm_raw')
     expected_tables = ['planet_osm_point', 'planet_osm_line', 'planet_osm_polygon', 'planet_osm_roads']
     
     cur = conn.cursor()
@@ -96,10 +88,11 @@ def verify_table_structure(conn, schema):
     
     return table_info
 
-def get_record_counts(conn, schema):
+def get_record_counts(conn, config):
     """Get record counts for all tables."""
     logging.info("Getting record counts...")
     
+    schema = config['database'].get('schema', 'osm_raw')
     tables = ['planet_osm_point', 'planet_osm_line', 'planet_osm_polygon', 'planet_osm_roads']
     
     cur = conn.cursor()
@@ -121,10 +114,11 @@ def get_record_counts(conn, schema):
     logging.info(f"  {'TOTAL':25}: {total_records:,} records")
     return counts
 
-def analyze_data_quality(conn, schema):
+def analyze_data_quality(conn, config):
     """Analyze data quality and completeness."""
     logging.info("Analyzing data quality...")
     
+    schema = config['database'].get('schema', 'osm_raw')
     cur = conn.cursor()
     analysis = {}
     
@@ -208,10 +202,11 @@ def analyze_data_quality(conn, schema):
     
     return analysis
 
-def check_spatial_data(conn, schema):
+def check_spatial_data(conn, config):
     """Check spatial data validity."""
     logging.info("Checking spatial data...")
     
+    schema = config['database'].get('schema', 'osm_raw')
     cur = conn.cursor()
     spatial_info = {}
     
@@ -247,7 +242,7 @@ def check_spatial_data(conn, schema):
     
     return spatial_info
 
-def get_database_statistics(conn, config, schema):
+def get_database_statistics(conn, config):
     """Get database size and performance statistics."""
     logging.info("Getting database statistics...")
     
@@ -260,6 +255,7 @@ def get_database_statistics(conn, config, schema):
         stats['database_size'] = cur.fetchone()[0]
         
         # Individual table sizes
+        schema = config['database'].get('schema', 'osm_raw')
         tables = ['planet_osm_point', 'planet_osm_line', 'planet_osm_polygon', 'planet_osm_roads']
         table_sizes = {}
         
@@ -272,7 +268,7 @@ def get_database_statistics(conn, config, schema):
         
         stats['table_sizes'] = table_sizes
         
-        # Index count
+        # Index count (should be minimal as requested)
         cur.execute(f"""
             SELECT count(*) 
             FROM pg_indexes 
@@ -289,7 +285,7 @@ def get_database_statistics(conn, config, schema):
         stats['constraint_count'] = cur.fetchone()[0]
         
         logging.info(f"✓ Database size: {stats['database_size']}")
-        logging.info(f"✓ Indexes: {stats['index_count']}")
+        logging.info(f"✓ Indexes: {stats['index_count']} (minimal as requested)")
         logging.info(f"✓ Constraints: {stats['constraint_count']}")
         
     except Exception as e:
@@ -298,10 +294,11 @@ def get_database_statistics(conn, config, schema):
     
     return stats
 
-def perform_sample_queries(conn, schema):
+def perform_sample_queries(conn, config):
     """Perform sample queries to test data accessibility."""
     logging.info("Testing sample queries...")
     
+    schema = config['database'].get('schema', 'osm_raw')
     cur = conn.cursor()
     query_results = {}
     
@@ -367,7 +364,7 @@ def perform_sample_queries(conn, schema):
     
     return query_results
 
-def generate_verification_report(verification_data, config, schema):
+def generate_verification_report(verification_data, config):
     """Generate comprehensive verification report."""
     
     # Create reports directory
@@ -386,7 +383,7 @@ def generate_verification_report(verification_data, config, schema):
         f.write("=" * 50 + "\n\n")
         f.write(f"Generated: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write(f"Database: {config['database']['name']}\n")
-        f.write(f"Schema: {schema}\n\n")
+        f.write(f"Schema: {config['database'].get('schema', 'osm_raw')}\n\n")
         
         # Record counts
         f.write("RECORD COUNTS\n")
@@ -450,45 +447,41 @@ def main():
     setup_logging()
     config = load_config()
     
-    logging.info("=== UK OSM Import Verification (CORRECTED) ===")
+    logging.info("=== UK OSM Import Verification ===")
     
     # Connect to database
     conn = connect_to_database(config)
     if not conn:
         return False
     
-    # Detect actual schema
-    actual_schema = detect_actual_schema(conn, config)
-    
     verification_data = {
         'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
-        'config': config,
-        'actual_schema': actual_schema
+        'config': config
     }
     
     try:
         # Run all verification steps
         logging.info("Step 1: Verifying table structure...")
-        verification_data['table_structure'] = verify_table_structure(conn, actual_schema)
+        verification_data['table_structure'] = verify_table_structure(conn, config)
         
         logging.info("Step 2: Getting record counts...")
-        verification_data['record_counts'] = get_record_counts(conn, actual_schema)
+        verification_data['record_counts'] = get_record_counts(conn, config)
         
         logging.info("Step 3: Analyzing data quality...")
-        verification_data['data_analysis'] = analyze_data_quality(conn, actual_schema)
+        verification_data['data_analysis'] = analyze_data_quality(conn, config)
         
         logging.info("Step 4: Checking spatial data...")
-        verification_data['spatial_data'] = check_spatial_data(conn, actual_schema)
+        verification_data['spatial_data'] = check_spatial_data(conn, config)
         
         logging.info("Step 5: Getting database statistics...")
-        verification_data['database_stats'] = get_database_statistics(conn, config, actual_schema)
+        verification_data['database_stats'] = get_database_statistics(conn, config)
         
         logging.info("Step 6: Testing sample queries...")
-        verification_data['sample_queries'] = perform_sample_queries(conn, actual_schema)
+        verification_data['sample_queries'] = perform_sample_queries(conn, config)
         
         # Generate reports
         logging.info("Generating verification reports...")
-        txt_report, json_report = generate_verification_report(verification_data, config, actual_schema)
+        txt_report, json_report = generate_verification_report(verification_data, config)
         
         # Summary
         total_records = verification_data['record_counts'].get('total', 0)
@@ -497,7 +490,6 @@ def main():
         print("\n" + "="*60)
         print("VERIFICATION SUMMARY")
         print("="*60)
-        print(f"Schema used: {actual_schema}")
         print(f"Total records: {total_records:,}")
         print(f"Database size: {db_size}")
         print(f"Tables verified: {len(verification_data['table_structure'])}")
@@ -520,3 +512,206 @@ def main():
 if __name__ == "__main__":
     success = main()
     sys.exit(0 if success else 1)
+EOF
+
+# Create a quick database status check script
+cat > scripts/verify/quick_status.py << 'EOF'
+#!/usr/bin/env python3
+"""
+Quick status check for UK OSM database
+"""
+
+import sys
+import os
+sys.path.append('scripts/utils')
+
+from osm_utils import setup_logging, load_config
+import logging
+import psycopg2
+
+def main():
+    setup_logging()
+    config = load_config()
+    
+    db_config = config['database']
+    schema = db_config.get('schema', 'osm_raw')
+    
+    try:
+        conn = psycopg2.connect(
+            host=db_config['host'],
+            port=db_config['port'],
+            user=db_config.get('user', 'a'),
+            database=db_config['name']
+        )
+        cur = conn.cursor()
+        
+        print("UK OSM Database Status")
+        print("=" * 30)
+        
+        # Quick counts
+        tables = ['planet_osm_point', 'planet_osm_line', 'planet_osm_polygon', 'planet_osm_roads']
+        total = 0
+        
+        for table in tables:
+            try:
+                cur.execute(f"SELECT count(*) FROM {schema}.{table}")
+                count = cur.fetchone()[0]
+                total += count
+                print(f"{table:20}: {count:,}")
+            except:
+                print(f"{table:20}: ERROR")
+        
+        print(f"{'TOTAL':20}: {total:,}")
+        
+        # Database size
+        cur.execute("SELECT pg_size_pretty(pg_database_size(%s))", (db_config['name'],))
+        size = cur.fetchone()[0]
+        print(f"{'Database size':20}: {size}")
+        
+        conn.close()
+        
+    except Exception as e:
+        print(f"Error: {e}")
+        return False
+    
+    return True
+
+if __name__ == "__main__":
+    main()
+EOF
+
+# Create summary script for the entire process
+cat > scripts/utils/process_summary.py << 'EOF'
+#!/usr/bin/env python3
+"""
+Generate summary of the entire UK OSM import process
+"""
+
+import sys
+import os
+import json
+from pathlib import Path
+sys.path.append('scripts/utils')
+
+from osm_utils import setup_logging, load_config
+
+def main():
+    setup_logging()
+    
+    print("\n" + "="*70)
+    print("UK OSM DATA PROCESSOR - PROCESS COMPLETE")
+    print("="*70)
+    
+    # Check what files exist
+    project_files = {
+        'Data file': 'data/raw/great-britain-latest.osm.pbf',
+        'Sample data': 'data/samples/',
+        'Verification report': 'reports/import_verification_report.txt',
+        'JSON report': 'reports/import_verification.json',
+        'Log files': 'logs/osm_processor.log'
+    }
+    
+    print("\nFILES CREATED:")
+    for desc, path in project_files.items():
+        if Path(path).exists():
+            if Path(path).is_file():
+                size = Path(path).stat().st_size
+                size_str = f"({size/1024/1024:.1f}MB)" if size > 1024*1024 else f"({size/1024:.1f}KB)"
+                print(f"✓ {desc:20}: {path} {size_str}")
+            else:
+                files_count = len(list(Path(path).glob('*')))
+                print(f"✓ {desc:20}: {path} ({files_count} files)")
+        else:
+            print(f"✗ {desc:20}: {path}")
+    
+    print("\nNEXT STEPS:")
+    print("1. Review verification report: reports/import_verification_report.txt")
+    print("2. Create indexes for performance: psql -d uk_osm_full")
+    print("3. Start querying your data!")
+    
+    print("\nSAMPLE QUERIES TO TRY:")
+    print("-- Find all pubs in Manchester")
+    print("SELECT name, ST_AsText(ST_Transform(way, 4326)) as location")
+    print("FROM osm_raw.planet_osm_point") 
+    print("WHERE amenity = 'pub'")
+    print("  AND way && ST_Transform(ST_GeomFromText(")
+    print("    'POLYGON((-2.3 53.4, -2.1 53.4, -2.1 53.5, -2.3 53.5, -2.3 53.4))', 4326), 3857);")
+    
+    print("\n-- Count buildings by type")
+    print("SELECT building, count(*) FROM osm_raw.planet_osm_polygon")
+    print("WHERE building IS NOT NULL GROUP BY building ORDER BY count DESC LIMIT 20;")
+    
+    print("\nFor more complex queries, consider creating indexes:")
+    print("CREATE INDEX idx_point_amenity ON osm_raw.planet_osm_point(amenity);")
+    print("CREATE INDEX idx_polygon_building ON osm_raw.planet_osm_polygon(building);")
+    print("CREATE INDEX idx_point_geom ON osm_raw.planet_osm_point USING GIST(way);")
+    
+    print("="*70)
+
+if __name__ == "__main__":
+    main()
+EOF
+
+# Make all scripts executable
+chmod +x scripts/verify/verify_import.py
+chmod +x scripts/verify/quick_status.py  
+chmod +x scripts/utils/process_summary.py
+
+# Create reports directory
+mkdir -p reports
+
+# Run verification
+echo -e "${YELLOW}Starting comprehensive import verification...${NC}"
+
+# Quick status check first
+echo -e "${YELLOW}Quick status check:${NC}"
+if command -v uv &> /dev/null; then
+    uv run scripts/verify/quick_status.py
+else
+    python3 scripts/verify/quick_status.py
+fi
+
+echo ""
+read -p "Run comprehensive verification? This may take several minutes (Y/n): " RUN_FULL_VERIFICATION
+
+if [[ $RUN_FULL_VERIFICATION != "n" && $RUN_FULL_VERIFICATION != "N" ]]; then
+    echo -e "${YELLOW}Running comprehensive verification...${NC}"
+    
+    if command -v uv &> /dev/null; then
+        uv run scripts/verify/verify_import.py
+    else
+        python3 scripts/verify/verify_import.py
+    fi
+    
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✓ Verification completed successfully${NC}"
+        
+        # Show verification results
+        if [ -f "reports/import_verification_report.txt" ]; then
+            echo -e "${YELLOW}Verification report preview:${NC}"
+            head -30 reports/import_verification_report.txt
+            echo -e "${YELLOW}... (see full report in reports/import_verification_report.txt)${NC}"
+        fi
+        
+        echo -e "${GREEN}=== Phase 6 Complete: Verification Successful ===${NC}"
+        
+    else
+        echo -e "${RED}✗ Verification had some issues${NC}"
+        echo -e "${YELLOW}Check logs/osm_processor.log for details${NC}"
+    fi
+else
+    echo -e "${YELLOW}Skipping comprehensive verification${NC}"
+fi
+
+# Generate final process summary
+echo -e "${YELLOW}Generating process summary...${NC}"
+if command -v uv &> /dev/null; then
+    uv run scripts/utils/process_summary.py
+else
+    python3 scripts/utils/process_summary.py
+fi
+
+echo ""
+echo -e "${GREEN}=== UK OSM IMPORT PROCESS COMPLETE ===${NC}"
+echo -e "${YELLOW}All phases completed successfully!${NC}"
+echo -e "${YELLOW}Your UK OSM data is ready for analysis and querying.${NC}"

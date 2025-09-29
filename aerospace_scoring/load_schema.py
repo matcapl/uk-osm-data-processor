@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Database schema inspector for UK OSM data - COLUMN-AWARE VERSION
+Database schema inspector for UK OSM data - CORRECTED VERSION
+Uses config.yaml properly and detects actual schema
 """
 
 import psycopg2
@@ -10,7 +11,7 @@ from pathlib import Path
 from typing import Dict, List, Any
 
 def connect_to_database() -> psycopg2.extensions.connection:
-    """Connect to the UK OSM database."""
+    """Connect to the UK OSM database using config.yaml."""
     try:
         with open('config/config.yaml', 'r') as f:
             config = yaml.safe_load(f)
@@ -21,21 +22,22 @@ def connect_to_database() -> psycopg2.extensions.connection:
             user=db_config['user'],
             database=db_config['name']
         )
-        return conn
+        return conn, config
     except Exception as e:
         print(f"✗ Database connection failed: {e}")
         raise
 
-def detect_actual_schema(conn: psycopg2.extensions.connection) -> str:
+def detect_actual_schema(conn: psycopg2.extensions.connection, config_schema: str) -> str:
     """Detect which schema actually contains the OSM tables."""
     cur = conn.cursor()
     
-    # Check common schema names
-    schemas_to_check = ['public', 'osm_raw', 'osm']
+    # First, try the schema specified in config
+    schemas_to_check = [config_schema, 'public', 'osm_raw', 'osm']
     osm_tables = ['planet_osm_point', 'planet_osm_line', 'planet_osm_polygon', 'planet_osm_roads']
     
     for schema in schemas_to_check:
         try:
+            # Check if this schema has OSM tables with data
             for table in osm_tables:
                 cur.execute("""
                     SELECT COUNT(*) FROM information_schema.tables 
@@ -43,22 +45,26 @@ def detect_actual_schema(conn: psycopg2.extensions.connection) -> str:
                 """, (schema, table))
                 
                 if cur.fetchone()[0] > 0:
-                    print(f"✓ Found OSM tables in schema: {schema}")
-                    return schema
-        except Exception:
+                    # Table exists, check if it has data
+                    cur.execute(f"SELECT COUNT(*) FROM {schema}.{table} LIMIT 1")
+                    if cur.fetchone()[0] > 0:
+                        print(f"✓ Found OSM tables with data in schema: {schema}")
+                        return schema
+        except Exception as e:
+            print(f"  Could not check schema {schema}: {e}")
             continue
     
-    return 'public'  # Default based on your system
+    print(f"⚠ No OSM data found, defaulting to: {config_schema}")
+    return config_schema
 
-def inspect_osm_tables(conn: psycopg2.extensions.connection) -> Dict[str, Any]:
-    """Inspect OSM tables and their columns - with column awareness."""
+def inspect_osm_tables(conn: psycopg2.extensions.connection, schema: str) -> Dict[str, Any]:
+    """Inspect OSM tables and their columns with proper schema detection."""
     cur = conn.cursor()
     
-    actual_schema = 'public'  # We know from diagnostic
     osm_tables = ['planet_osm_point', 'planet_osm_line', 'planet_osm_polygon', 'planet_osm_roads']
     
     schema_info = {
-        'schema': actual_schema,
+        'schema': schema,
         'tables': {},
         'summary': {'total_tables': 0, 'total_columns': 0, 'tables_with_data': 0}
     }
@@ -80,7 +86,7 @@ def inspect_osm_tables(conn: psycopg2.extensions.connection) -> Dict[str, Any]:
                 FROM information_schema.columns 
                 WHERE table_schema = %s AND table_name = %s
                 ORDER BY ordinal_position
-            """, (actual_schema, table))
+            """, (schema, table))
             
             all_columns = []
             important_found = []
@@ -99,7 +105,7 @@ def inspect_osm_tables(conn: psycopg2.extensions.connection) -> Dict[str, Any]:
             
             if all_columns:
                 # Get row count
-                cur.execute(f"SELECT count(*) FROM {actual_schema}.{table}")
+                cur.execute(f"SELECT count(*) FROM {schema}.{table}")
                 row_count = cur.fetchone()[0]
                 
                 # Sample data to understand content
@@ -108,11 +114,11 @@ def inspect_osm_tables(conn: psycopg2.extensions.connection) -> Dict[str, Any]:
                     # Sample query with only existing important columns
                     existing_important = [col for col in important_found if col in ['name', 'amenity', 'landuse', 'office', 'industrial']]
                     if existing_important:
-                        sample_columns = ', '.join(existing_important)
+                        sample_columns = ', '.join(f'"{col}"' for col in existing_important)
                         try:
                             cur.execute(f"""
                                 SELECT {sample_columns}
-                                FROM {actual_schema}.{table} 
+                                FROM {schema}.{table} 
                                 WHERE name IS NOT NULL
                                 LIMIT 3
                             """)
@@ -137,7 +143,8 @@ def inspect_osm_tables(conn: psycopg2.extensions.connection) -> Dict[str, Any]:
                 
                 print(f"✓ {table}: {len(all_columns)} columns, {row_count:,} rows")
                 print(f"  Important columns found: {len(important_found)}/{len(important_columns)}")
-                print(f"  Key columns: {', '.join(important_found[:8])}")
+                if important_found:
+                    print(f"  Key columns: {', '.join(important_found[:8])}")
                 
             else:
                 schema_info['tables'][table] = {'exists': False}
@@ -152,11 +159,15 @@ def inspect_osm_tables(conn: psycopg2.extensions.connection) -> Dict[str, Any]:
 
 def main():
     """Main function to inspect database schema."""
-    print("Inspecting UK OSM database schema with column awareness...")
+    print("Inspecting UK OSM database schema...")
     
     try:
-        conn = connect_to_database()
-        schema_info = inspect_osm_tables(conn)
+        conn, config = connect_to_database()
+        config_schema = config['database'].get('schema', 'public')
+        print(f"Config specifies schema: {config_schema}")
+        
+        actual_schema = detect_actual_schema(conn, config_schema)
+        schema_info = inspect_osm_tables(conn, actual_schema)
         
         # Export schema info
         with open('aerospace_scoring/schema.json', 'w') as f:

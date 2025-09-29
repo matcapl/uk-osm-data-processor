@@ -1,4 +1,4 @@
-# UK Aerospace Supplier Scoring System
+# UK Aerospace Supplier Scoring System (CORRECTED)
 
 This system analyzes UK OpenStreetMap data to identify potential Tier-2 aerospace suppliers.
 
@@ -63,19 +63,27 @@ The system creates a table `aerospace_supplier_candidates` with:
 ```sql
 -- Top tier-2 candidates
 SELECT name, aerospace_score, postcode, website
-FROM aerospace_supplier_candidates 
+FROM public.aerospace_supplier_candidates 
 WHERE tier_classification = 'tier2_candidate'
 ORDER BY aerospace_score DESC;
 
 -- Candidates by region
 SELECT LEFT(postcode,2) as area, COUNT(*), AVG(aerospace_score)
-FROM aerospace_supplier_candidates
+FROM public.aerospace_supplier_candidates
 WHERE postcode IS NOT NULL
 GROUP BY LEFT(postcode,2)
 ORDER BY COUNT(*) DESC;
 
 -- High-confidence candidates with contact info
 SELECT name, aerospace_score, website, phone, city
-FROM aerospace_supplier_candidates
+FROM public.aerospace_supplier_candidates
 WHERE confidence_level = 'high' AND (website IS NOT NULL OR phone IS NOT NULL);
 ```
+
+## Fixes Applied
+
+This corrected version:
+- Detects actual schema automatically (your tables are in `public`)
+- Uses proper user authentication (`a`)
+- Handles column names safely with proper quoting
+- Reads configuration from config.yaml properly

@@ -1,10 +1,31 @@
 #!/bin/bash
 
 # ========================================
-# UK OSM Import - CORRECTED AEROSPACE SUPPLIER SCORING SYSTEM
-# File: 07_aerospace_pipeline.sh
-# FIXED: Schema detection and user consistency
+# UK OSM Import - MASTER SETUP SCRIPT FOR UK AEROSPACE SUPPLIER SCORING SYSTEM
+# File: was 0Claude_setup_uk_osm_project.sh now 07_aerospace_pipeline.sh
 # ========================================
+
+# To make this work
+# Fixed load_schema.py(?)
+# deleted garbage after last echo (incomplete / stray code likely from load_schema.py(?))
+# Within check_database within run_aerospace_scoring.py :
+# changed cur.execute("SELECT COUNT(*) FROM osm_raw.planet_osm_point LIMIT 1") to cur.execute(f"SELECT COUNT(*) FROM {schema}.planet_osm_point LIMIT 1")
+# added schema and print in 
+# schema = config['database'].get('schema', 'public')
+# print("Using schema:", schema)
+# Changed steps = [python3...] to 
+    # steps = [
+    #     ('uv run aerospace_scoring/load_schema.py', 'Database Schema Analysis'),
+    #     ('uv run aerospace_scoring/generate_exclusions.py', 'Generate Exclusion Rules'),
+    #     ('uv run aerospace_scoring/generate_scoring.py', 'Generate Scoring Rules'),
+    #     ('uv run aerospace_scoring/assemble_sql.py', 'Assemble Complete SQL')
+    # ]
+# Changed scoring_expr = f"(\n        {' +\n        '.join(all_parts)}\n    ) AS aerospace_score" to 
+# joined_parts = ' +\n        '.join(all_parts)
+# scoring_expr = f"(\n        {joined_parts}\n    ) AS aerospace_score"
+# Within run_aerospace_scoring.py 
+# Changed (then changed back again, because it didn't work) cmd = f"psql -h {db_config['host']} ... -f aerospace_scoring/compute_aerospace_scores.sql" to 
+# cmd = f"psql -h {db_config['host']} ... -f aerospace_scoring/compute_aerospace_complete.sql"
 
 set -euo pipefail
 
@@ -15,7 +36,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-echo -e "${BLUE}=== UK Aerospace Supplier Scoring System Setup (CORRECTED) ===${NC}"
+echo -e "${BLUE}=== UK Aerospace Supplier Scoring System Setup ===${NC}"
 
 # Create directory structure
 echo -e "${YELLOW}Creating directory structure...${NC}"
@@ -377,15 +398,17 @@ EOF
 
 echo -e "${GREEN}✓ YAML configuration files created${NC}"
 
-# Create CORRECTED Python scripts with proper schema detection
-echo -e "${YELLOW}Creating corrected Python processing scripts...${NC}"
+# Create Python scripts by copying content from artifacts
+echo -e "${YELLOW}Creating Python processing scripts...${NC}"
 
-# Create corrected load_schema.py
+# We'll need to create these as separate files since they're quite large
+# For now, create placeholders that reference the artifact content
+
+# Create load_schema.py
 cat > aerospace_scoring/load_schema.py << 'EOF'
 #!/usr/bin/env python3
 """
-Database schema inspector for UK OSM data - CORRECTED VERSION
-Uses config.yaml properly and detects actual schema
+Database schema inspector for UK OSM data - COLUMN-AWARE VERSION
 """
 
 import psycopg2
@@ -395,7 +418,7 @@ from pathlib import Path
 from typing import Dict, List, Any
 
 def connect_to_database() -> psycopg2.extensions.connection:
-    """Connect to the UK OSM database using config.yaml."""
+    """Connect to the UK OSM database."""
     try:
         with open('config/config.yaml', 'r') as f:
             config = yaml.safe_load(f)
@@ -406,22 +429,21 @@ def connect_to_database() -> psycopg2.extensions.connection:
             user=db_config['user'],
             database=db_config['name']
         )
-        return conn, config
+        return conn
     except Exception as e:
         print(f"✗ Database connection failed: {e}")
         raise
 
-def detect_actual_schema(conn: psycopg2.extensions.connection, config_schema: str) -> str:
+def detect_actual_schema(conn: psycopg2.extensions.connection) -> str:
     """Detect which schema actually contains the OSM tables."""
     cur = conn.cursor()
     
-    # First, try the schema specified in config
-    schemas_to_check = [config_schema, 'public', 'osm_raw', 'osm']
+    # Check common schema names
+    schemas_to_check = ['public', 'osm_raw', 'osm']
     osm_tables = ['planet_osm_point', 'planet_osm_line', 'planet_osm_polygon', 'planet_osm_roads']
     
     for schema in schemas_to_check:
         try:
-            # Check if this schema has OSM tables with data
             for table in osm_tables:
                 cur.execute("""
                     SELECT COUNT(*) FROM information_schema.tables 
@@ -429,26 +451,22 @@ def detect_actual_schema(conn: psycopg2.extensions.connection, config_schema: st
                 """, (schema, table))
                 
                 if cur.fetchone()[0] > 0:
-                    # Table exists, check if it has data
-                    cur.execute(f"SELECT COUNT(*) FROM {schema}.{table} LIMIT 1")
-                    if cur.fetchone()[0] > 0:
-                        print(f"✓ Found OSM tables with data in schema: {schema}")
-                        return schema
-        except Exception as e:
-            print(f"  Could not check schema {schema}: {e}")
+                    print(f"✓ Found OSM tables in schema: {schema}")
+                    return schema
+        except Exception:
             continue
     
-    print(f"⚠ No OSM data found, defaulting to: {config_schema}")
-    return config_schema
+    return 'public'  # Default based on your system
 
-def inspect_osm_tables(conn: psycopg2.extensions.connection, schema: str) -> Dict[str, Any]:
-    """Inspect OSM tables and their columns with proper schema detection."""
+def inspect_osm_tables(conn: psycopg2.extensions.connection) -> Dict[str, Any]:
+    """Inspect OSM tables and their columns - with column awareness."""
     cur = conn.cursor()
     
+    actual_schema = 'public'  # We know from diagnostic
     osm_tables = ['planet_osm_point', 'planet_osm_line', 'planet_osm_polygon', 'planet_osm_roads']
     
     schema_info = {
-        'schema': schema,
+        'schema': actual_schema,
         'tables': {},
         'summary': {'total_tables': 0, 'total_columns': 0, 'tables_with_data': 0}
     }
@@ -470,7 +488,7 @@ def inspect_osm_tables(conn: psycopg2.extensions.connection, schema: str) -> Dic
                 FROM information_schema.columns 
                 WHERE table_schema = %s AND table_name = %s
                 ORDER BY ordinal_position
-            """, (schema, table))
+            """, (actual_schema, table))
             
             all_columns = []
             important_found = []
@@ -489,7 +507,7 @@ def inspect_osm_tables(conn: psycopg2.extensions.connection, schema: str) -> Dic
             
             if all_columns:
                 # Get row count
-                cur.execute(f"SELECT count(*) FROM {schema}.{table}")
+                cur.execute(f"SELECT count(*) FROM {actual_schema}.{table}")
                 row_count = cur.fetchone()[0]
                 
                 # Sample data to understand content
@@ -498,11 +516,11 @@ def inspect_osm_tables(conn: psycopg2.extensions.connection, schema: str) -> Dic
                     # Sample query with only existing important columns
                     existing_important = [col for col in important_found if col in ['name', 'amenity', 'landuse', 'office', 'industrial']]
                     if existing_important:
-                        sample_columns = ', '.join(f'"{col}"' for col in existing_important)
+                        sample_columns = ', '.join(existing_important)
                         try:
                             cur.execute(f"""
                                 SELECT {sample_columns}
-                                FROM {schema}.{table} 
+                                FROM {actual_schema}.{table} 
                                 WHERE name IS NOT NULL
                                 LIMIT 3
                             """)
@@ -527,8 +545,7 @@ def inspect_osm_tables(conn: psycopg2.extensions.connection, schema: str) -> Dic
                 
                 print(f"✓ {table}: {len(all_columns)} columns, {row_count:,} rows")
                 print(f"  Important columns found: {len(important_found)}/{len(important_columns)}")
-                if important_found:
-                    print(f"  Key columns: {', '.join(important_found[:8])}")
+                print(f"  Key columns: {', '.join(important_found[:8])}")
                 
             else:
                 schema_info['tables'][table] = {'exists': False}
@@ -543,15 +560,11 @@ def inspect_osm_tables(conn: psycopg2.extensions.connection, schema: str) -> Dic
 
 def main():
     """Main function to inspect database schema."""
-    print("Inspecting UK OSM database schema...")
+    print("Inspecting UK OSM database schema with column awareness...")
     
     try:
-        conn, config = connect_to_database()
-        config_schema = config['database'].get('schema', 'public')
-        print(f"Config specifies schema: {config_schema}")
-        
-        actual_schema = detect_actual_schema(conn, config_schema)
-        schema_info = inspect_osm_tables(conn, actual_schema)
+        conn = connect_to_database()
+        schema_info = inspect_osm_tables(conn)
         
         # Export schema info
         with open('aerospace_scoring/schema.json', 'w') as f:
@@ -589,10 +602,10 @@ if __name__ == "__main__":
     exit(main())
 EOF
 
-# Create corrected generate_exclusions.py
+# Create simplified generate_exclusions.py
 cat > aerospace_scoring/generate_exclusions.py << 'EOF'
 #!/usr/bin/env python3
-"""Generate SQL exclusion clauses from exclusions.yaml - CORRECTED VERSION"""
+"""Generate SQL exclusion clauses from exclusions.yaml - FIXED VERSION"""
 
 import yaml
 import json
@@ -615,12 +628,11 @@ def check_column_exists(schema, table, column):
     return any(col['name'] == column for col in columns)
 
 def generate_exclusion_sql(exclusions, schema):
-    schema_name = schema.get('schema', 'public')
+    schema_name = schema.get('schema', 'public')  # Fixed: use actual schema
     sql_parts = []
     
     sql_parts.append("-- Aerospace Supplier Exclusion Filters")
-    sql_parts.append(f"-- Generated from exclusions.yaml for schema: {schema_name}")
-    sql_parts.append("-- Auto-detected actual schema from database\n")
+    sql_parts.append("-- Generated from exclusions.yaml\n")
     
     for table_name, table_info in schema['tables'].items():
         if not table_info.get('exists') or table_info.get('row_count', 0) == 0:
@@ -628,21 +640,21 @@ def generate_exclusion_sql(exclusions, schema):
         
         conditions = []
         
-        # Apply general exclusions - handle nested structure properly
+        # Apply general exclusions - FIXED: handle nested structure properly
         for category_name, category_rules in exclusions['exclusions'].items():
             for column, values in category_rules.items():
                 if check_column_exists(schema, table_name, column):
-                    # Skip empty value lists entirely
+                    # Skip empty value lists entirely - don't generate SQL for them
                     if not values:
                         continue
                     
                     if '*' in values:
                         # Exclude all non-null values for this column
-                        conditions.append(f'"{column}" IS NULL')
+                        conditions.append(f"{column} IS NULL")
                     else:
                         # Exclude specific values
                         quoted_values = "', '".join(values)
-                        conditions.append(f'("{column}" IS NULL OR "{column}" NOT IN (\'{quoted_values}\'))')
+                        conditions.append(f"({column} IS NULL OR {column} NOT IN ('{quoted_values}'))")
         
         # Apply table-specific exclusions
         table_exclusions = exclusions.get('table_exclusions', {}).get(table_name, {})
@@ -652,10 +664,10 @@ def generate_exclusion_sql(exclusions, schema):
                     continue
                 
                 if '*' in values:
-                    conditions.append(f'"{column}" IS NULL')
+                    conditions.append(f"{column} IS NULL")
                 else:
                     quoted_values = "', '".join(values)
-                    conditions.append(f'("{column}" IS NULL OR "{column}" NOT IN (\'{quoted_values}\'))')
+                    conditions.append(f"({column} IS NULL OR {column} NOT IN ('{quoted_values}'))")
         
         # Generate override conditions (these BYPASS exclusions)
         override_conditions = []
@@ -666,17 +678,17 @@ def generate_exclusion_sql(exclusions, schema):
                         continue
                     
                     if '*' in values:
-                        override_conditions.append(f'"{column}" IS NOT NULL')
+                        override_conditions.append(f"{column} IS NOT NULL")
                     elif 'aerospace' in str(values).lower() or 'aviation' in str(values).lower():
                         # Special handling for text search in overrides
                         text_conditions = []
                         for value in values:
-                            text_conditions.append(f'LOWER("{column}") LIKE LOWER(\'%{value}%\')')
+                            text_conditions.append(f"LOWER({column}) LIKE LOWER('%{value}%')")
                         if text_conditions:
                             override_conditions.append(f"({' OR '.join(text_conditions)})")
                     else:
                         quoted_values = "', '".join(values)
-                        override_conditions.append(f'"{column}" IN (\'{quoted_values}\')')
+                        override_conditions.append(f"{column} IN ('{quoted_values}')")
         
         # Create filtered view with proper logic
         if conditions or override_conditions:
@@ -747,10 +759,10 @@ if __name__ == "__main__":
     exit(main())
 EOF
 
-# Create corrected generate_scoring.py
+# Create simplified generate_scoring.py
 cat > aerospace_scoring/generate_scoring.py << 'EOF'
 #!/usr/bin/env python3
-"""Generate SQL scoring expressions from scoring.yaml - CORRECTED VERSION"""
+"""Generate SQL scoring expressions from scoring.yaml"""
 
 import yaml
 import json
@@ -778,16 +790,15 @@ def check_column_exists(schema, table, column):
 def generate_text_search(column, keywords):
     conditions = []
     for keyword in keywords:
-        conditions.append(f'LOWER("{column}") LIKE LOWER(\'%{keyword}%\')')
+        conditions.append(f"LOWER({column}) LIKE LOWER('%{keyword}%')")
     return f"({' OR '.join(conditions)})"
 
 def generate_scoring_sql(scoring, negative_signals, schema):
-    schema_name = schema.get('schema', 'public')
+    schema_name = schema.get('schema', 'osm_raw')
     sql_parts = []
     
     sql_parts.append("-- Aerospace Supplier Scoring SQL")
-    sql_parts.append(f"-- Generated from scoring.yaml for schema: {schema_name}")
-    sql_parts.append("-- Auto-detected actual schema from database\n")
+    sql_parts.append("-- Generated from scoring.yaml and negative_signals.yaml\n")
     
     for table_name, table_info in schema['tables'].items():
         if not table_info.get('exists') or table_info.get('row_count', 0) == 0:
@@ -811,10 +822,10 @@ def generate_scoring_sql(scoring, negative_signals, schema):
                             rule_conditions.append(text_condition)
                     elif check_column_exists(schema, table_name, field):
                         if '*' in values:
-                            rule_conditions.append(f'"{field}" IS NOT NULL')
+                            rule_conditions.append(f"{field} IS NOT NULL")
                         else:
                             quoted_values = "', '".join(values)
-                            rule_conditions.append(f'"{field}" IN (\'{quoted_values}\')')
+                            rule_conditions.append(f"{field} IN ('{quoted_values}')")
             
             if rule_conditions:
                 combined = ' OR '.join(rule_conditions)
@@ -851,10 +862,10 @@ def generate_scoring_sql(scoring, negative_signals, schema):
                 for field, values in condition.items():
                     if check_column_exists(schema, table_name, field):
                         if '*' in values:
-                            signal_conditions.append(f'"{field}" IS NOT NULL')
+                            signal_conditions.append(f"{field} IS NOT NULL")
                         else:
                             quoted_values = "', '".join(values)
-                            signal_conditions.append(f'"{field}" IN (\'{quoted_values}\')')
+                            signal_conditions.append(f"{field} IN ('{quoted_values}')")
             
             if signal_conditions:
                 combined = ' OR '.join(signal_conditions)
@@ -873,6 +884,7 @@ def generate_scoring_sql(scoring, negative_signals, schema):
         if all_parts:
             joined_parts = ' +\n        '.join(all_parts)
             scoring_expr = f"(\n        {joined_parts}\n    ) AS aerospace_score"
+
         else:
             scoring_expr = "0 AS aerospace_score"
         
@@ -913,15 +925,16 @@ if __name__ == "__main__":
     exit(main())
 EOF
 
-# Create corrected assemble_sql.py
+# Create simplified assemble_sql.py
 cat > aerospace_scoring/assemble_sql.py << 'EOF'
 #!/usr/bin/env python3
-"""Assemble complete SQL script for aerospace supplier scoring - CORRECTED VERSION"""
+"""Assemble complete SQL script for aerospace supplier scoring"""
 
 import yaml
 import json
 from pathlib import Path
 from datetime import datetime
+
 
 def load_configs():
     configs = {}
@@ -932,11 +945,12 @@ def load_configs():
         configs['schema'] = json.load(f)
     return configs
 
-def generate_output_table_ddl(seed_columns, schema_name):
+
+def generate_output_table_ddl(seed_columns):
     table_name = seed_columns['output_table']['name']
-    ddl = f"""-- Create aerospace supplier candidates table in {schema_name}
-DROP TABLE IF EXISTS {schema_name}.{table_name} CASCADE;
-CREATE TABLE {schema_name}.{table_name} (
+    ddl = f"""-- Create aerospace supplier candidates table
+DROP TABLE IF EXISTS {table_name} CASCADE;
+CREATE TABLE {table_name} (
     osm_id BIGINT,
     osm_type VARCHAR(50),
     name TEXT,
@@ -963,15 +977,20 @@ CREATE TABLE {schema_name}.{table_name} (
 );
 
 -- Create indexes
-CREATE INDEX idx_aerospace_score ON {schema_name}.{table_name}(aerospace_score);
-CREATE INDEX idx_tier ON {schema_name}.{table_name}(tier_classification);
-CREATE INDEX idx_postcode ON {schema_name}.{table_name}(postcode);
-CREATE INDEX idx_geom ON {schema_name}.{table_name} USING GIST(geometry);"""
+CREATE INDEX idx_aerospace_score ON {table_name}(aerospace_score);
+CREATE INDEX idx_tier ON {table_name}(tier_classification);
+CREATE INDEX idx_postcode ON {table_name}(postcode);
+CREATE INDEX idx_geom ON {table_name} USING GIST(geometry);"""
     return ddl
+
 
 def generate_insert_sql(schema, thresholds):
     schema_name = schema.get('schema', 'public')
-    min_score = thresholds.get('filter_minimum_score', 10)
+    # Fallback for filter_minimum_score
+    min_score = thresholds.get(
+        'filter_minimum_score',
+        thresholds.get('scores', {}).get('filter_minimum_score', 10)
+    )
     max_cands = thresholds.get('max_candidates', 5000)
 
     tier_case = """CASE
@@ -990,7 +1009,7 @@ def generate_insert_sql(schema, thresholds):
     END"""
 
     insert_sql = f"""-- Insert enriched aerospace supplier candidates
-INSERT INTO {schema_name}.aerospace_supplier_candidates (
+INSERT INTO aerospace_supplier_candidates (
     osm_id, osm_type, name, operator, website, phone, postcode, street_address, city,
     landuse_type, building_type, industrial_type, office_type, description,
     geometry, latitude, longitude, aerospace_score, tier_classification,
@@ -1032,9 +1051,9 @@ ORDER BY aerospace_score DESC
 LIMIT {max_cands};"""
     return insert_sql
 
+
 def assemble_complete_sql(configs):
     schema = configs['schema']
-    schema_name = schema.get('schema', 'public')
     thresholds = configs['thresholds']
     seed_columns = configs['seed_columns']
 
@@ -1047,13 +1066,12 @@ def assemble_complete_sql(configs):
     except FileNotFoundError:
         scoring_sql = "-- Run generate_scoring.py first"
 
-    table_ddl = generate_output_table_ddl(seed_columns, schema_name)
+    table_ddl = generate_output_table_ddl(seed_columns)
     insert_sql = generate_insert_sql(schema, thresholds)
 
     complete_sql = f"""-- UK AEROSPACE SUPPLIER IDENTIFICATION SYSTEM
 -- Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
--- Schema: {schema_name}
--- CORRECTED VERSION with proper schema detection
+-- Schema: {schema.get('schema','public')}
 
 -- STEP 1: Apply exclusion filters
 {exclusions_sql}
@@ -1068,26 +1086,27 @@ def assemble_complete_sql(configs):
 {insert_sql}
 
 -- STEP 5: Analysis queries
-SELECT 'Total candidates' AS metric, COUNT(*) AS value FROM {schema_name}.aerospace_supplier_candidates
+SELECT 'Total candidates' AS metric, COUNT(*) AS value FROM aerospace_supplier_candidates
 UNION ALL
-SELECT 'With contact info', COUNT(*) FROM {schema_name}.aerospace_supplier_candidates WHERE website IS NOT NULL OR phone IS NOT NULL
+SELECT 'With contact info', COUNT(*) FROM aerospace_supplier_candidates WHERE website IS NOT NULL OR phone IS NOT NULL
 UNION ALL
-SELECT 'High confidence', COUNT(*) FROM {schema_name}.aerospace_supplier_candidates WHERE confidence_level = 'high';
+SELECT 'High confidence', COUNT(*) FROM aerospace_supplier_candidates WHERE confidence_level = 'high';
 
 -- Classification breakdown
 SELECT tier_classification, COUNT(*) AS count, AVG(aerospace_score) AS avg_score
-FROM {schema_name}.aerospace_supplier_candidates
+FROM aerospace_supplier_candidates
 GROUP BY tier_classification
 ORDER BY avg_score DESC;
 
 -- Top candidates
 SELECT name, tier_classification, aerospace_score, postcode
-FROM {schema_name}.aerospace_supplier_candidates
+FROM aerospace_supplier_candidates
 WHERE tier_classification IN ('tier1_candidate','tier2_candidate')
 ORDER BY aerospace_score DESC
 LIMIT 20;
 """
     return complete_sql
+
 
 def main():
     print("Assembling complete SQL script...")
@@ -1101,22 +1120,25 @@ def main():
         return 1
     return 0
 
+
 if __name__ == "__main__":
     exit(main())
 EOF
 
-# Create corrected run_aerospace_scoring.py
+# Create main execution script
 cat > aerospace_scoring/run_aerospace_scoring.py << 'EOF'
 #!/usr/bin/env python3
-"""Main execution script for aerospace supplier scoring system - CORRECTED VERSION"""
+"""Main execution script for aerospace supplier scoring system"""
 
 import subprocess
 import psycopg2
 import yaml
+import getpass
 import os
 from pathlib import Path
 from datetime import datetime
 
+# Expected views
 EXPECTED_VIEWS = [
     'planet_osm_point_aerospace_filtered',
     'planet_osm_line_aerospace_filtered',
@@ -1126,63 +1148,49 @@ EXPECTED_VIEWS = [
     'planet_osm_polygon_aerospace_scored'
 ]
 
+# Schemas and users to test
+SCHEMAS = ['public', 'osm_raw']
+USERS = ['a', 'ukosm_user', 'postgres']
+
 def run_step(cmd, desc):
     print(f"Running: {desc}")
     try:
-        result = subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
+        subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
         print(f"  ✓ {desc} completed")
-        if result.stdout:
-            print(f"  Output: {result.stdout.strip()}")
         return True
     except subprocess.CalledProcessError as e:
         print(f"  ✗ {desc} failed: {e.stderr or e}")
         return False
 
-def load_db_config():
-    try:
-        with open('config/config.yaml', 'r') as f:
-            config = yaml.safe_load(f)
-        db_config = config['database']
-        return {
-            'host': db_config['host'],
-            'port': db_config['port'],
-            'user': db_config['user'],
-            'password': db_config.get('password', ''),
-            'dbname': db_config['name'],
-            'schema': db_config.get('schema', 'public')
-        }
-    except Exception as e:
-        print(f"✗ Could not load config: {e}")
-        return None
+def load_db_cfg():
+    db = yaml.safe_load(Path('config/config.yaml').read_text())['database']
+    return {
+        'host': db['host'],
+        'port': db['port'],
+        'user': db['user'],
+        'password': db.get('password',''),
+        'dbname': db['name']
+    }
 
 def check_database():
-    cfg = load_db_config()
-    if not cfg:
-        return False
-    
+    cfg = load_db_cfg()
     try:
-        conn_params = {k: v for k, v in cfg.items() if k != 'schema'}
-        conn = psycopg2.connect(**conn_params)
-        schema = cfg['schema']
-        
+        conn = psycopg2.connect(**cfg)
+        schema = yaml.safe_load(Path('config/config.yaml').read_text())['database'].get('schema','public')
         with conn.cursor() as cur:
-            cur.execute(f"SELECT COUNT(*) FROM {schema}.planet_osm_point LIMIT 1")
-            count = cur.fetchone()[0]
-            print(f"✓ Database connection verified ({count:,} records in planet_osm_point)")
+            cur.execute(f"SELECT 1 FROM {schema}.planet_osm_point LIMIT 1;")
         conn.close()
+        print("✓ Database connection verified")
         return True
     except Exception as e:
         print(f"✗ Database connection failed: {e}")
         return False
 
 def execute_sql():
-    cfg = load_db_config()
-    if not cfg:
-        return False
-    
+    cfg = yaml.safe_load(Path('config/config.yaml').read_text())['database']
     cmd = (
         f"psql -h {cfg['host']} -p {cfg['port']} "
-        f"-U {cfg['user']} -d {cfg['dbname']} "
+        f"-U {cfg['user']} -d {cfg['name']} "
         f"-f aerospace_scoring/compute_aerospace_scores.sql"
     )
     result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
@@ -1202,35 +1210,53 @@ def get_existing_views(conn, schema):
     """, (schema,))
     return {r[0] for r in cur.fetchall()}
 
-def write_diagnostics(conn, out_path, schema):
+def write_diagnostics(conn, out_path):
+    cfg = yaml.safe_load(Path('config/config.yaml').read_text())['database']
     with open(out_path, 'w') as f:
-        f.write(f"Aerospace Pipeline Diagnostics\n")
-        f.write(f"Generated: {datetime.now()}\n")
-        f.write(f"Schema: {schema}\n\n")
-        
-        f.write("Available tables/views:\n")
-        views = get_existing_views(conn, schema)
-        for v in sorted(views):
-            f.write(f"  {v}\n")
-        
-        f.write("\nExpected views status:\n")
-        for view in EXPECTED_VIEWS:
-            if view in views:
-                cur = conn.cursor()
+        f.write(f"Logged at: {datetime.now()}\n\n")
+        for schema in SCHEMAS:
+            for user in USERS:
+                f.write(f"--- Schema: {schema} | User: {user} ---\n")
+                # reconnect as that user
+                params = {
+                    'host': cfg['host'],
+                    'port': cfg['port'],
+                    'dbname': cfg['name'],
+                    'user': user,
+                    'password': cfg.get('password','')
+                }
                 try:
-                    cur.execute(f"SELECT COUNT(*) FROM {schema}.{view}")
-                    cnt = cur.fetchone()[0]
-                    f.write(f"  ✓ {view}: {cnt} rows\n")
+                    c = psycopg2.connect(**params)
+                    vs = get_existing_views(c, schema)
+                    f.write("Available tables/views:\n")
+                    for v in sorted(vs):
+                        f.write(f"  {v}\n")
+                    f.write("Counts & columns:\n")
+                    for view in EXPECTED_VIEWS:
+                        if view in vs:
+                            cur = c.cursor()
+                            cur.execute(f"SELECT COUNT(*) FROM {schema}.{view};")
+                            cnt = cur.fetchone()[0]
+                            f.write(f"  {view}: {cnt} rows\n")
+                            cur.execute("""
+                                SELECT column_name
+                                FROM information_schema.columns
+                                WHERE table_schema=%s AND table_name=%s
+                                ORDER BY ordinal_position
+                            """, (schema, view))
+                            cols = [r[0] for r in cur.fetchall()]
+                            f.write(f"    columns: {','.join(cols)}\n")
+                        else:
+                            f.write(f"  {view}: DOES NOT EXIST\n")
+                    c.close()
                 except Exception as e:
-                    f.write(f"  ✗ {view}: ERROR - {e}\n")
-            else:
-                f.write(f"  ✗ {view}: MISSING\n")
-    
+                    f.write(f"  ERROR connecting as {user}: {e}\n")
+                f.write("\n")
     print(f"✓ Diagnostics written to {out_path}")
 
 def main():
     print("="*60)
-    print("UK AEROSPACE SUPPLIER SCORING SYSTEM (CORRECTED)")
+    print("UK AEROSPACE SUPPLIER SCORING SYSTEM")
     print(f"Started: {datetime.now()}")
     print("="*60)
 
@@ -1238,12 +1264,11 @@ def main():
         return 1
 
     steps = [
-        ('python3 aerospace_scoring/load_schema.py', 'Database Schema Analysis'),
-        ('python3 aerospace_scoring/generate_exclusions.py', 'Generate Exclusion Rules'),
-        ('python3 aerospace_scoring/generate_scoring.py', 'Generate Scoring Rules'),
-        ('python3 aerospace_scoring/assemble_sql.py', 'Assemble Complete SQL')
+        ('uv run aerospace_scoring/load_schema.py', 'Database Schema Analysis'),
+        ('uv run aerospace_scoring/generate_exclusions.py', 'Generate Exclusion Rules'),
+        ('uv run aerospace_scoring/generate_scoring.py', 'Generate Scoring Rules'),
+        ('uv run aerospace_scoring/assemble_sql.py', 'Assemble Complete SQL')
     ]
-    
     for i, (cmd, desc) in enumerate(steps, 1):
         print(f"\nStep {i}: {desc}")
         if not run_step(cmd, desc):
@@ -1254,44 +1279,30 @@ def main():
         return 1
 
     print("\nStep 6: Diagnostics")
-    cfg = load_db_config()
-    if cfg:
-        conn_params = {k: v for k, v in cfg.items() if k != 'schema'}
-        try:
-            conn = psycopg2.connect(**conn_params)
-            write_diagnostics(conn, 'check.txt', cfg['schema'])
-            conn.close()
-        except Exception as e:
-            print(f"✗ Diagnostics failed: {e}")
+    # use a dummy conn just for get_existing_views() signature
+    base_conn = psycopg2.connect(**load_db_cfg())
+    write_diagnostics(base_conn, 'check.txt')
+    base_conn.close()
 
     print("\nStep 7: Verification")
     try:
-        cfg = load_db_config()
-        conn_params = {k: v for k, v in cfg.items() if k != 'schema'}
-        conn = psycopg2.connect(**conn_params)
-        schema = cfg['schema']
-        
+        conn = psycopg2.connect(**load_db_cfg())
         cur = conn.cursor()
-        cur.execute(f"SELECT COUNT(*) FROM {schema}.aerospace_supplier_candidates")
+        cur.execute("SELECT COUNT(*) FROM aerospace_supplier_candidates;")
         total = cur.fetchone()[0]
-        
-        cur.execute(f"""
-            SELECT tier_classification, COUNT(*) 
-            FROM {schema}.aerospace_supplier_candidates 
-            GROUP BY tier_classification 
-            ORDER BY COUNT(*) DESC
-        """)
+        cur.execute(
+            "SELECT tier_classification, COUNT(*) FROM aerospace_supplier_candidates "
+            "GROUP BY tier_classification ORDER BY COUNT(*) DESC"
+        )
         tiers = cur.fetchall()
         conn.close()
-        
         print("="*60)
         print("RESULTS SUMMARY")
         print("="*60)
         print(f"Total candidates: {total:,}")
         for tier, cnt in tiers:
             print(f"  {tier}: {cnt:,}")
-        print("\n✓ Completed successfully!")
-        
+        print("\n✓ Completed")
     except Exception as e:
         print(f"✗ Verification failed: {e}")
         return 1
@@ -1305,12 +1316,12 @@ EOF
 # Make scripts executable
 chmod +x aerospace_scoring/*.py
 
-echo -e "${GREEN}✓ CORRECTED Python processing scripts created${NC}"
+echo -e "${GREEN}✓ Python processing scripts created${NC}"
 
-# Create corrected diagnostic test
-cat > diagnostic_test_corrected.sh << 'EOF'
+# Create diagnostic test
+cat > diagnostic_test.sh << 'EOF'
 #!/bin/bash
-# diagnostic_test_corrected.sh - Test with proper schema detection
+# diagnostic_test.sh - Test individual components of aerospace scoring - FIXED
 
 set -euo pipefail
 
@@ -1320,86 +1331,105 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-echo -e "${BLUE}=== Corrected Aerospace Pipeline Diagnostic Test ===${NC}"
+echo -e "${BLUE}=== Aerospace Pipeline Diagnostic Test ===${NC}"
 
-# Load config to get actual schema
-SCHEMA=$(python3 -c "
-import yaml
-with open('config/config.yaml', 'r') as f:
-    config = yaml.safe_load(f)
-print(config['database']['schema'])
-")
-
-echo -e "${YELLOW}Using schema from config: $SCHEMA${NC}"
-
-# Step 1: Test database connection
+# Step 1: Test database connection and schema detection
 echo -e "${YELLOW}Step 1: Testing database connection...${NC}"
-if psql -d uk_osm_full -c "SELECT current_schema(), current_user;" 2>/dev/null; then
+if psql -d uk_osm_full -c "SELECT current_schema(), version();" 2>/dev/null; then
     echo -e "${GREEN}✓ Database connection works${NC}"
 else
     echo -e "${RED}✗ Database connection failed${NC}"
     exit 1
 fi
 
-# Step 2: Check actual table locations
-echo -e "${YELLOW}Step 2: Verifying table locations...${NC}"
-echo "Tables in $SCHEMA schema:"
+ACTUAL_SCHEMA="public"  # We know it's public from the diagnostic
+
+# Step 2: Check what columns actually exist
+echo -e "${YELLOW}Step 2: Checking available columns...${NC}"
+echo "Columns in planet_osm_point:"
 psql -d uk_osm_full -c "
-SELECT table_name, 
-       pg_size_pretty(pg_total_relation_size('$SCHEMA.'||table_name)) as size
-FROM information_schema.tables 
-WHERE table_schema='$SCHEMA' 
-  AND table_name LIKE 'planet_osm_%'
+SELECT column_name 
+FROM information_schema.columns 
+WHERE table_schema='public' AND table_name='planet_osm_point' 
+  AND column_name IN ('name', 'amenity', 'building', 'landuse', 'industrial', 'office', 'man_made', 'shop', 'tourism')
+ORDER BY column_name;
+"
+
+echo "Columns in planet_osm_polygon:"
+psql -d uk_osm_full -c "
+SELECT column_name 
+FROM information_schema.columns 
+WHERE table_schema='public' AND table_name='planet_osm_polygon' 
+  AND column_name IN ('name', 'amenity', 'building', 'landuse', 'industrial', 'office', 'man_made')
+ORDER BY column_name;
+"
+
+# Step 3: Row counts
+echo -e "${YELLOW}Step 3: Checking row counts...${NC}"
+psql -d uk_osm_full -c "
+SELECT 
+    'planet_osm_point' as table_name, count(*) as rows
+FROM public.planet_osm_point
+UNION ALL
+SELECT 
+    'planet_osm_polygon', count(*)
+FROM public.planet_osm_polygon
 ORDER BY table_name;
 "
 
-# Step 3: Test aerospace scoring query
-echo -e "${YELLOW}Step 3: Testing aerospace-relevant data query...${NC}"
-echo "Industrial/aerospace relevant features:"
+# Step 4: Test for aerospace-relevant data (column-safe)
+echo -e "${YELLOW}Step 4: Checking for aerospace-relevant data...${NC}"
+echo "Industrial facilities in polygons:"
 psql -d uk_osm_full -c "
-SELECT 
-    CASE 
-        WHEN name IS NOT NULL AND (
-            LOWER(name) LIKE '%aerospace%' OR 
-            LOWER(name) LIKE '%aviation%' OR
-            LOWER(name) LIKE '%aircraft%' OR
-            LOWER(name) LIKE '%engineering%'
-        ) THEN 'Direct aerospace keywords'
-        WHEN landuse = 'industrial' THEN 'Industrial landuse'
-        WHEN building IN ('industrial', 'warehouse', 'factory') THEN 'Industrial building'
-        WHEN office IS NOT NULL THEN 'Office facility'
-        ELSE 'Other'
-    END as category,
-    COUNT(*) as count
-FROM $SCHEMA.planet_osm_polygon
-WHERE (
-    landuse = 'industrial' OR 
-    building IN ('industrial', 'warehouse', 'factory') OR
-    office IS NOT NULL OR
-    (name IS NOT NULL AND (
-        LOWER(name) LIKE '%aerospace%' OR 
-        LOWER(name) LIKE '%aviation%' OR
-        LOWER(name) LIKE '%aircraft%' OR
-        LOWER(name) LIKE '%engineering%'
-    ))
-)
-GROUP BY category
-ORDER BY count DESC;
+SELECT COUNT(*) as industrial_count
+FROM public.planet_osm_polygon 
+WHERE landuse = 'industrial' OR building IN ('industrial', 'warehouse', 'factory');
+"
+
+echo "Facilities with aerospace-related names in points (safe query):"
+psql -d uk_osm_full -c "
+SELECT name, amenity, landuse
+FROM public.planet_osm_point 
+WHERE name IS NOT NULL 
+  AND (LOWER(name) LIKE '%aerospace%' 
+       OR LOWER(name) LIKE '%aviation%'
+       OR LOWER(name) LIKE '%aircraft%'
+       OR LOWER(name) LIKE '%engineering%'
+       OR LOWER(name) LIKE '%technology%')
+LIMIT 5;
+"
+
+# Step 5: Test what data we can actually work with
+echo -e "${YELLOW}Step 5: Testing available aerospace-relevant data...${NC}"
+echo "Points with office/industrial tags:"
+psql -d uk_osm_full -c "
+SELECT COUNT(*) as office_industrial_points
+FROM public.planet_osm_point 
+WHERE office IS NOT NULL OR man_made IS NOT NULL;
+"
+
+echo "Sample of potentially relevant points:"
+psql -d uk_osm_full -c "
+SELECT name, amenity, office, man_made
+FROM public.planet_osm_point 
+WHERE (office IS NOT NULL OR man_made IS NOT NULL)
+  AND name IS NOT NULL
+LIMIT 10;
 "
 
 echo ""
-echo -e "${BLUE}=== Corrected Diagnostic Complete ===${NC}"
-echo -e "${YELLOW}Schema: $SCHEMA${NC}"
-echo -e "${YELLOW}Ready to run: python3 aerospace_scoring/run_aerospace_scoring.py${NC}"
+echo -e "${BLUE}=== Diagnostic Complete ===${NC}"
+echo -e "${YELLOW}Schema: public${NC}"
+echo -e "${YELLOW}Key finding: Points table lacks 'building' column - this needs to be handled in the code${NC}"
 EOF
 
-chmod +x diagnostic_test_corrected.sh
+chmod +x diagnostic_test.sh
 
-echo -e "${GREEN}✓ Corrected diagnostic test created${NC}"
+echo -e "${GREEN}✓ Diagnostic test created${NC}"
 
 # Create README
 cat > aerospace_scoring/README.md << 'EOF'
-# UK Aerospace Supplier Scoring System (CORRECTED)
+# UK Aerospace Supplier Scoring System
 
 This system analyzes UK OpenStreetMap data to identify potential Tier-2 aerospace suppliers.
 
@@ -1464,47 +1494,38 @@ The system creates a table `aerospace_supplier_candidates` with:
 ```sql
 -- Top tier-2 candidates
 SELECT name, aerospace_score, postcode, website
-FROM public.aerospace_supplier_candidates 
+FROM aerospace_supplier_candidates 
 WHERE tier_classification = 'tier2_candidate'
 ORDER BY aerospace_score DESC;
 
 -- Candidates by region
 SELECT LEFT(postcode,2) as area, COUNT(*), AVG(aerospace_score)
-FROM public.aerospace_supplier_candidates
+FROM aerospace_supplier_candidates
 WHERE postcode IS NOT NULL
 GROUP BY LEFT(postcode,2)
 ORDER BY COUNT(*) DESC;
 
 -- High-confidence candidates with contact info
 SELECT name, aerospace_score, website, phone, city
-FROM public.aerospace_supplier_candidates
+FROM aerospace_supplier_candidates
 WHERE confidence_level = 'high' AND (website IS NOT NULL OR phone IS NOT NULL);
 ```
-
-## Fixes Applied
-
-This corrected version:
-- Detects actual schema automatically (your tables are in `public`)
-- Uses proper user authentication (`a`)
-- Handles column names safely with proper quoting
-- Reads configuration from config.yaml properly
 EOF
 
 echo -e "${GREEN}✓ README created${NC}"
 
 echo ""
-echo -e "${BLUE}=== CORRECTED SETUP COMPLETE ===${NC}"
-echo -e "${GREEN}All schema and user conflicts have been resolved!${NC}"
+echo -e "${BLUE}=== SETUP COMPLETE ===${NC}"
+echo -e "${GREEN}Created aerospace supplier scoring system in: aerospace_scoring/${NC}"
 echo ""
-echo -e "${YELLOW}Summary of changes:${NC}"
-echo -e "${YELLOW}1. All scripts now detect actual schema automatically${NC}"
-echo -e "${YELLOW}2. Fixed user authentication to use your working user 'a'${NC}"
-echo -e "${YELLOW}3. Added proper column name quoting for SQL safety${NC}"
-echo -e "${YELLOW}4. Consistent config.yaml integration across all components${NC}"
+echo -e "${YELLOW}Files created:${NC}"
+echo -e "${YELLOW}  Configuration: 5 YAML files (exclusions, scoring, thresholds, etc.)${NC}"
+echo -e "${YELLOW}  Processing: 4 Python scripts${NC}"
+echo -e "${YELLOW}  Documentation: README.md${NC}"
 echo ""
 echo -e "${BLUE}Next steps:${NC}"
-echo -e "${YELLOW}1. Update config/config.yaml with corrected version (see artifacts)${NC}"
-echo -e "${YELLOW}2. Test: ./diagnostic_test_corrected.sh${NC}"
-echo -e "${YELLOW}3. Run: python3 aerospace_scoring/run_aerospace_scoring.py${NC}"
+echo -e "${YELLOW}1. Ensure your UK OSM database is accessible${NC}"
+echo -e "${YELLOW}2. Run: python3 aerospace_scoring/run_aerospace_scoring.py${NC}"
+echo -e "${YELLOW}3. Review results in aerospace_supplier_candidates table${NC}"
 echo ""
-echo -e "${GREEN}The aerospace pipeline is now ready to identify suppliers from your OSM data!${NC}"
+echo -e "${GREEN}The system will identify tier-2 aerospace suppliers from your OSM data!${NC}"

@@ -2,11 +2,11 @@
 
 database:
   name: uk_osm_full
-  user: ukosm_user
+  user: a
   password: ""  # Leave empty for peer authentication
   host: localhost
   port: 5432
-  schema: osm_raw
+  schema: public
 
 download:
   source_url: https://download.geofabrik.de/europe/great-britain-latest.osm.pbf

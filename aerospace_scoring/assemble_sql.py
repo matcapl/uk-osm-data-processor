@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Assemble complete SQL script for aerospace supplier scoring"""
+"""Assemble complete SQL script for aerospace supplier scoring - CORRECTED VERSION"""
 
 import yaml
 import json
 from pathlib import Path
 from datetime import datetime
-
 
 def load_configs():
     configs = {}
@@ -16,12 +15,11 @@ def load_configs():
         configs['schema'] = json.load(f)
     return configs
 
-
-def generate_output_table_ddl(seed_columns):
+def generate_output_table_ddl(seed_columns, schema_name):
     table_name = seed_columns['output_table']['name']
-    ddl = f"""-- Create aerospace supplier candidates table
-DROP TABLE IF EXISTS {table_name} CASCADE;
-CREATE TABLE {table_name} (
+    ddl = f"""-- Create aerospace supplier candidates table in {schema_name}
+DROP TABLE IF EXISTS {schema_name}.{table_name} CASCADE;
+CREATE TABLE {schema_name}.{table_name} (
     osm_id BIGINT,
     osm_type VARCHAR(50),
     name TEXT,
@@ -48,20 +46,15 @@ CREATE TABLE {table_name} (
 );
 
 -- Create indexes
-CREATE INDEX idx_aerospace_score ON {table_name}(aerospace_score);
-CREATE INDEX idx_tier ON {table_name}(tier_classification);
-CREATE INDEX idx_postcode ON {table_name}(postcode);
-CREATE INDEX idx_geom ON {table_name} USING GIST(geometry);"""
+CREATE INDEX idx_aerospace_score ON {schema_name}.{table_name}(aerospace_score);
+CREATE INDEX idx_tier ON {schema_name}.{table_name}(tier_classification);
+CREATE INDEX idx_postcode ON {schema_name}.{table_name}(postcode);
+CREATE INDEX idx_geom ON {schema_name}.{table_name} USING GIST(geometry);"""
     return ddl
-
 
 def generate_insert_sql(schema, thresholds):
     schema_name = schema.get('schema', 'public')
-    # Fallback for filter_minimum_score
-    min_score = thresholds.get(
-        'filter_minimum_score',
-        thresholds.get('scores', {}).get('filter_minimum_score', 10)
-    )
+    min_score = thresholds.get('filter_minimum_score', 10)
     max_cands = thresholds.get('max_candidates', 5000)
 
     tier_case = """CASE
@@ -80,7 +73,7 @@ def generate_insert_sql(schema, thresholds):
     END"""
 
     insert_sql = f"""-- Insert enriched aerospace supplier candidates
-INSERT INTO aerospace_supplier_candidates (
+INSERT INTO {schema_name}.aerospace_supplier_candidates (
     osm_id, osm_type, name, operator, website, phone, postcode, street_address, city,
     landuse_type, building_type, industrial_type, office_type, description,
     geometry, latitude, longitude, aerospace_score, tier_classification,
@@ -122,9 +115,9 @@ ORDER BY aerospace_score DESC
 LIMIT {max_cands};"""
     return insert_sql
 
-
 def assemble_complete_sql(configs):
     schema = configs['schema']
+    schema_name = schema.get('schema', 'public')
     thresholds = configs['thresholds']
     seed_columns = configs['seed_columns']
 
@@ -137,12 +130,13 @@ def assemble_complete_sql(configs):
     except FileNotFoundError:
         scoring_sql = "-- Run generate_scoring.py first"
 
-    table_ddl = generate_output_table_ddl(seed_columns)
+    table_ddl = generate_output_table_ddl(seed_columns, schema_name)
     insert_sql = generate_insert_sql(schema, thresholds)
 
     complete_sql = f"""-- UK AEROSPACE SUPPLIER IDENTIFICATION SYSTEM
 -- Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
--- Schema: {schema.get('schema','public')}
+-- Schema: {schema_name}
+-- CORRECTED VERSION with proper schema detection
 
 -- STEP 1: Apply exclusion filters
 {exclusions_sql}
@@ -157,27 +151,26 @@ def assemble_complete_sql(configs):
 {insert_sql}
 
 -- STEP 5: Analysis queries
-SELECT 'Total candidates' AS metric, COUNT(*) AS value FROM aerospace_supplier_candidates
+SELECT 'Total candidates' AS metric, COUNT(*) AS value FROM {schema_name}.aerospace_supplier_candidates
 UNION ALL
-SELECT 'With contact info', COUNT(*) FROM aerospace_supplier_candidates WHERE website IS NOT NULL OR phone IS NOT NULL
+SELECT 'With contact info', COUNT(*) FROM {schema_name}.aerospace_supplier_candidates WHERE website IS NOT NULL OR phone IS NOT NULL
 UNION ALL
-SELECT 'High confidence', COUNT(*) FROM aerospace_supplier_candidates WHERE confidence_level = 'high';
+SELECT 'High confidence', COUNT(*) FROM {schema_name}.aerospace_supplier_candidates WHERE confidence_level = 'high';
 
 -- Classification breakdown
 SELECT tier_classification, COUNT(*) AS count, AVG(aerospace_score) AS avg_score
-FROM aerospace_supplier_candidates
+FROM {schema_name}.aerospace_supplier_candidates
 GROUP BY tier_classification
 ORDER BY avg_score DESC;
 
 -- Top candidates
 SELECT name, tier_classification, aerospace_score, postcode
-FROM aerospace_supplier_candidates
+FROM {schema_name}.aerospace_supplier_candidates
 WHERE tier_classification IN ('tier1_candidate','tier2_candidate')
 ORDER BY aerospace_score DESC
 LIMIT 20;
 """
     return complete_sql
-
 
 def main():
     print("Assembling complete SQL script...")
@@ -190,7 +183,6 @@ def main():
         print(f"✗ Failed: {e}")
         return 1
     return 0
-
 
 if __name__ == "__main__":
     exit(main())

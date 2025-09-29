@@ -1,0 +1,37 @@
+Aerospace Pipeline Diagnostics
+Generated: 2025-09-29 09:50:44.493960
+Schema: public
+
+Available tables/views:
+  aerospace_candidates_tmp
+  aerospace_supplier_candidates
+  column_list
+  column_scores
+  geography_columns
+  geometry_columns
+  osm2pgsql_properties
+  planet_osm_line
+  planet_osm_line_aerospace_filtered
+  planet_osm_line_aerospace_scored
+  planet_osm_nodes
+  planet_osm_point
+  planet_osm_point_aerospace_filtered
+  planet_osm_point_aerospace_scored
+  planet_osm_polygon
+  planet_osm_polygon_aerospace_filtered
+  planet_osm_polygon_aerospace_scored
+  planet_osm_rels
+  planet_osm_roads
+  planet_osm_roads_aerospace_filtered
+  planet_osm_roads_aerospace_scored
+  planet_osm_users
+  planet_osm_ways
+  spatial_ref_sys
+
+Expected views status:
+  ✓ planet_osm_point_aerospace_filtered: 263722 rows
+  ✓ planet_osm_line_aerospace_filtered: 261916 rows
+  ✓ planet_osm_polygon_aerospace_filtered: 3546 rows
+  ✓ planet_osm_point_aerospace_scored: 197 rows
+  ✓ planet_osm_line_aerospace_scored: 1806 rows
+  ✓ planet_osm_polygon_aerospace_scored: 95 rows

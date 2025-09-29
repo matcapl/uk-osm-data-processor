@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate SQL scoring expressions from scoring.yaml"""
+"""Generate SQL scoring expressions from scoring.yaml - CORRECTED VERSION"""
 
 import yaml
 import json
@@ -27,15 +27,16 @@ def check_column_exists(schema, table, column):
 def generate_text_search(column, keywords):
     conditions = []
     for keyword in keywords:
-        conditions.append(f"LOWER({column}) LIKE LOWER('%{keyword}%')")
+        conditions.append(f'LOWER("{column}") LIKE LOWER(\'%{keyword}%\')')
     return f"({' OR '.join(conditions)})"
 
 def generate_scoring_sql(scoring, negative_signals, schema):
-    schema_name = schema.get('schema', 'osm_raw')
+    schema_name = schema.get('schema', 'public')
     sql_parts = []
     
     sql_parts.append("-- Aerospace Supplier Scoring SQL")
-    sql_parts.append("-- Generated from scoring.yaml and negative_signals.yaml\n")
+    sql_parts.append(f"-- Generated from scoring.yaml for schema: {schema_name}")
+    sql_parts.append("-- Auto-detected actual schema from database\n")
     
     for table_name, table_info in schema['tables'].items():
         if not table_info.get('exists') or table_info.get('row_count', 0) == 0:
@@ -59,10 +60,10 @@ def generate_scoring_sql(scoring, negative_signals, schema):
                             rule_conditions.append(text_condition)
                     elif check_column_exists(schema, table_name, field):
                         if '*' in values:
-                            rule_conditions.append(f"{field} IS NOT NULL")
+                            rule_conditions.append(f'"{field}" IS NOT NULL')
                         else:
                             quoted_values = "', '".join(values)
-                            rule_conditions.append(f"{field} IN ('{quoted_values}')")
+                            rule_conditions.append(f'"{field}" IN (\'{quoted_values}\')')
             
             if rule_conditions:
                 combined = ' OR '.join(rule_conditions)
@@ -99,10 +100,10 @@ def generate_scoring_sql(scoring, negative_signals, schema):
                 for field, values in condition.items():
                     if check_column_exists(schema, table_name, field):
                         if '*' in values:
-                            signal_conditions.append(f"{field} IS NOT NULL")
+                            signal_conditions.append(f'"{field}" IS NOT NULL')
                         else:
                             quoted_values = "', '".join(values)
-                            signal_conditions.append(f"{field} IN ('{quoted_values}')")
+                            signal_conditions.append(f'"{field}" IN (\'{quoted_values}\')')
             
             if signal_conditions:
                 combined = ' OR '.join(signal_conditions)
@@ -121,7 +122,6 @@ def generate_scoring_sql(scoring, negative_signals, schema):
         if all_parts:
             joined_parts = ' +\n        '.join(all_parts)
             scoring_expr = f"(\n        {joined_parts}\n    ) AS aerospace_score"
-
         else:
             scoring_expr = "0 AS aerospace_score"
         
