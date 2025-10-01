@@ -239,140 +239,95 @@ EOF
 # 5. seed_columns.yaml
 cat > aerospace_scoring/seed_columns.yaml << 'EOF'
 # Output table structure and column definitions
+
 output_table:
   name: "aerospace_supplier_candidates"
   description: "Tier-2 aerospace supplier candidates from UK OSM data"
+  columns:
+    # Identification columns
+    - name: osm_id
+      type: bigint
+      description: "Original OSM object ID"
+    - name: osm_type
+      type: varchar(50)
+      description: "Source OSM table"
+    - name: name
+      type: text
+      description: "Primary name (fallback to operator or brand)"
+    - name: operator
+      type: text
+      description: "Operating company"
 
-# Core identification columns
-identification_columns:
-  - column_name: "osm_id"
-    source_column: "osm_id"
-    data_type: "bigint"
-    description: "Original OSM object ID"
-    
-  - column_name: "osm_type"
-    source_column: "source_table"
-    data_type: "varchar(50)"
-    description: "Source OSM table"
-    
-  - column_name: "name"
-    source_column: "name"
-    data_type: "text"
-    description: "Primary name"
-    fallback_columns: ["operator", "brand"]
-    
-  - column_name: "operator"
-    source_column: "operator"
-    data_type: "text"
-    description: "Operating company"
+    # Contact information
+    - name: website
+      type: text
+      description: "Website URL (fallback to contact:website)"
+    - name: phone
+      type: text
+      description: "Phone number (fallback to contact:phone)"
 
-# Contact information
-contact_columns:
-  - column_name: "website"
-    source_column: "website"
-    data_type: "text"
-    description: "Website URL"
-    fallback_columns: ["contact:website"]
-    
-  - column_name: "phone"
-    source_column: "phone"
-    data_type: "text"
-    description: "Phone number"
-    fallback_columns: ["contact:phone"]
+    # Address components
+    - name: postcode
+      type: varchar(20)
+      description: "UK postal code"
+    - name: street_address
+      type: text
+      description: "Street address"
+    - name: city
+      type: text
+      description: "City (fallback to town)"
 
-# Address components
-address_columns:
-  - column_name: "postcode"
-    source_column: "addr:postcode"
-    data_type: "varchar(20)"
-    description: "UK postal code"
-    
-  - column_name: "street_address"
-    source_column: "addr:street"
-    data_type: "text"
-    description: "Street address"
-    
-  - column_name: "city"
-    source_column: "addr:city"
-    data_type: "text"
-    description: "City"
-    fallback_columns: ["addr:town"]
+    # Industrial classification
+    - name: landuse_type
+      type: text
+      description: "Land use type"
+    - name: building_type
+      type: text
+      description: "Building type"
+    - name: industrial_type
+      type: text
+      description: "Industrial classification (fallback to craft)"
+    - name: office_type
+      type: text
+      description: "Office classification"
 
-# Industrial classification
-classification_columns:
-  - column_name: "landuse_type"
-    source_column: "landuse"
-    data_type: "text"
-    description: "Land use type"
-    
-  - column_name: "building_type"
-    source_column: "building"
-    data_type: "text"
-    description: "Building type"
-    
-  - column_name: "industrial_type"
-    source_column: "industrial"
-    data_type: "text"
-    description: "Industrial type"
-    fallback_columns: ["craft"]
-    
-  - column_name: "office_type"
-    source_column: "office"
-    data_type: "text"
-    description: "Office type"
+    # Descriptive information
+    - name: description
+      type: text
+      description: "Description"
 
-# Descriptive information
-descriptive_columns:
-  - column_name: "description"
-    source_column: "description"
-    data_type: "text"
-    description: "Description"
+    # Spatial data
+    - name: geometry
+      type: geometry
+      description: "PostGIS geometry"
+    - name: latitude
+      type: double precision
+      description: "Latitude (centroid)"
+    - name: longitude
+      type: double precision
+      description: "Longitude (centroid)"
 
-# Spatial data
-spatial_columns:
-  - column_name: "geometry"
-    source_column: "way"
-    data_type: "geometry"
-    description: "PostGIS geometry"
-    
-  - column_name: "latitude"
-    source_expression: "ST_Y(ST_Transform(ST_Centroid(way), 4326))"
-    data_type: "double precision"
-    description: "Latitude"
-    
-  - column_name: "longitude"
-    source_expression: "ST_X(ST_Transform(ST_Centroid(way), 4326))"
-    data_type: "double precision"
-    description: "Longitude"
+    # Scoring and tier
+    - name: aerospace_score
+      type: integer
+      description: "Computed aerospace relevance score"
+    - name: tier_classification
+      type: varchar(50)
+      description: "Supplier tier classification"
+    - name: matched_keywords
+      type: text[]
+      description: "List of matched keywords"
 
-# Scoring columns
-scoring_columns:
-  - column_name: "aerospace_score"
-    source_expression: "computed"
-    data_type: "integer"
-    description: "Aerospace relevance score"
-    
-  - column_name: "tier_classification"
-    source_expression: "computed"
-    data_type: "varchar(50)"
-    description: "Supplier tier"
-    
-  - column_name: "matched_keywords"
-    source_expression: "computed"
-    data_type: "text[]"
-    description: "Matched keywords"
-
-# Metadata
-metadata_columns:
-  - column_name: "created_at"
-    source_expression: "NOW()"
-    data_type: "timestamp"
-    description: "Creation timestamp"
-    
-  - column_name: "confidence_level"
-    source_expression: "computed"
-    data_type: "varchar(20)"
-    description: "Confidence level"
+    # Metadata
+    - name: confidence_level
+      type: varchar(20)
+      description: "Computed confidence level"
+    - name: created_at
+      type: timestamp
+      description: "Record creation timestamp"
+    - name: source_table
+      type: varchar(50)
+      description: "Original source table name"
 EOF
 
 echo -e "${GREEN}✓ YAML configuration files created${NC}"
@@ -750,173 +705,154 @@ EOF
 # Create corrected generate_scoring.py
 cat > aerospace_scoring/generate_scoring.py << 'EOF'
 #!/usr/bin/env python3
-"""Generate SQL scoring expressions from scoring.yaml - CORRECTED VERSION"""
+"""Generate SQL scoring expressions from scoring.yaml – CORRECTED & EXPANDED"""
 
 import yaml
 import json
 from pathlib import Path
+from datetime import datetime
+
+# Only these OSM tables are scored
+TABLES = ["planet_osm_point", "planet_osm_line", "planet_osm_polygon"]
 
 def load_configs():
+    """Load scoring rules, negative signals, and detected schema."""
     with open('aerospace_scoring/scoring.yaml', 'r') as f:
         scoring = yaml.safe_load(f)
-    
     with open('aerospace_scoring/negative_signals.yaml', 'r') as f:
-        negative_signals = yaml.safe_load(f)
-    
+        negative = yaml.safe_load(f)
     with open('aerospace_scoring/schema.json', 'r') as f:
         schema = json.load(f)
-    
-    return scoring, negative_signals, schema
+    return scoring, negative, schema
 
 def check_column_exists(schema, table, column):
-    table_info = schema.get('tables', {}).get(table, {})
-    if not table_info.get('exists'):
+    """
+    Check if a column exists in the schema.json metadata for a given table.
+    Prevents generating SQL against non-existent columns.
+    """
+    info = schema.get('tables', {}).get(table, {})
+    if not info.get('exists'):
         return False
-    columns = table_info.get('columns', [])
-    return any(col['name'] == column for col in columns)
+    return any(col['name'] == column for col in info.get('columns', []))
 
 def generate_text_search(column, keywords):
-    conditions = []
-    for keyword in keywords:
-        conditions.append(f'LOWER("{column}") LIKE LOWER(\'%{keyword}%\')')
-    return f"({' OR '.join(conditions)})"
+    """
+    Build a case-insensitive LIKE clause for a set of keywords on a given column.
+    Returns 'FALSE' if no keywords provided to avoid empty parentheses.
+    """
+    if not keywords:
+        return "FALSE"
+    conds = [f"LOWER(source.\"{column}\") LIKE LOWER('%{kw}%')" for kw in keywords]
+    return "(" + " OR ".join(conds) + ")"
 
-def generate_scoring_sql(scoring, negative_signals, schema):
-    schema_name = schema.get('schema', 'public')
-    sql_parts = []
-    
-    sql_parts.append("-- Aerospace Supplier Scoring SQL")
-    sql_parts.append(f"-- Generated from scoring.yaml for schema: {schema_name}")
-    sql_parts.append("-- Auto-detected actual schema from database\n")
-    
-    for table_name, table_info in schema['tables'].items():
-        if not table_info.get('exists') or table_info.get('row_count', 0) == 0:
-            continue
-        
-        # Build scoring CASE statement
-        case_parts = []
-        
-        # Positive scoring rules
-        for rule_name, rule_config in scoring['scoring_rules'].items():
-            weight = rule_config.get('weight', 0)
-            conditions = rule_config.get('conditions', [])
-            
-            rule_conditions = []
-            for condition in conditions:
-                for field, values in condition.items():
-                    if field.endswith('_contains'):
-                        base_field = field.replace('_contains', '')
-                        if check_column_exists(schema, table_name, base_field):
-                            text_condition = generate_text_search(base_field, values)
-                            rule_conditions.append(text_condition)
-                    elif check_column_exists(schema, table_name, field):
-                        if '*' in values:
-                            rule_conditions.append(f'"{field}" IS NOT NULL')
+def generate_scoring_sql(scoring, negative, schema):
+    """
+    Build the full SQL text for scoring views:
+      - One CREATE VIEW per table in TABLES
+      - CASE for positive rules, keyword bonuses, and negative signals
+      - Ensures raw score expression and alias are separated
+      - Always emits a view even if filtered data is empty
+    """
+    sch = schema.get('schema', 'public')
+    sql_parts = [
+        "-- Aerospace Supplier Scoring SQL",
+        f"-- Generated: {datetime.utcnow().isoformat()}",
+        f"-- Schema: {sch}",
+        ""
+    ]
+
+    for tbl in TABLES:
+        # Build positive rule CASE clauses
+        case_clauses = []
+        for rule in scoring['scoring_rules'].values():
+            w = rule.get('weight', 0)
+            conds = []
+            for cond in rule.get('conditions', []):
+                for col, vals in cond.items():
+                    if col.endswith('_contains'):
+                        base = col[:-9]
+                        if check_column_exists(schema, tbl, base):
+                            conds.append(generate_text_search(base, vals))
+                    elif check_column_exists(schema, tbl, col):
+                        if '*' in vals:
+                            conds.append(f"source.\"{col}\" IS NOT NULL")
                         else:
-                            quoted_values = "', '".join(values)
-                            rule_conditions.append(f'"{field}" IN (\'{quoted_values}\')')
-            
-            if rule_conditions:
-                combined = ' OR '.join(rule_conditions)
-                case_parts.append(f"WHEN ({combined}) THEN {weight}")
-        
-        # Build keyword bonuses
-        bonus_expressions = []
-        for bonus_name, bonus_config in scoring['keyword_bonuses'].items():
-            weight = bonus_config.get('weight', 0)
-            keywords = bonus_config.get('keywords', [])
-            
-            text_fields = []
-            for field in ['name', 'operator', 'description']:
-                if check_column_exists(schema, table_name, field):
-                    text_fields.append(field)
-            
-            if text_fields and keywords:
-                field_conditions = []
-                for field in text_fields:
-                    keyword_condition = generate_text_search(field, keywords)
-                    field_conditions.append(keyword_condition)
-                
-                combined_condition = ' OR '.join(field_conditions)
-                bonus_expressions.append(f"CASE WHEN ({combined_condition}) THEN {weight} ELSE 0 END")
-        
-        # Build negative scoring
-        negative_expressions = []
-        for signal_name, signal_config in negative_signals['negative_signals'].items():
-            weight = signal_config.get('weight', 0)
-            conditions = signal_config.get('conditions', [])
-            
-            signal_conditions = []
-            for condition in conditions:
-                for field, values in condition.items():
-                    if check_column_exists(schema, table_name, field):
-                        if '*' in values:
-                            signal_conditions.append(f'"{field}" IS NOT NULL')
+                            q = "','".join(vals)
+                            conds.append(f"source.\"{col}\" IN ('{q}')")
+            if conds:
+                case_clauses.append(f"WHEN ({' OR '.join(conds)}) THEN {w}")
+
+        # Build keyword bonus expressions
+        bonus_parts = []
+        for kb in scoring.get('keyword_bonuses', {}).values():
+            w = kb.get('weight', 0)
+            kws = kb.get('keywords', [])
+            fields = [c for c in ('name','operator','description') if check_column_exists(schema, tbl, c)]
+            if fields and kws:
+                fs = [generate_text_search(c, kws) for c in fields]
+                bonus_parts.append(f"CASE WHEN ({' OR '.join(fs)}) THEN {w} ELSE 0 END")
+
+        # Build negative signal expressions
+        neg_parts = []
+        for ns in negative.get('negative_signals', {}).values():
+            w = ns.get('weight', 0)
+            conds = []
+            for cond in ns.get('conditions', []):
+                for col, vals in cond.items():
+                    if check_column_exists(schema, tbl, col):
+                        if '*' in vals:
+                            conds.append(f"source.\"{col}\" IS NOT NULL")
                         else:
-                            quoted_values = "', '".join(values)
-                            signal_conditions.append(f'"{field}" IN (\'{quoted_values}\')')
-            
-            if signal_conditions:
-                combined = ' OR '.join(signal_conditions)
-                negative_expressions.append(f"CASE WHEN ({combined}) THEN {weight} ELSE 0 END")
-        
-        # Combine all scoring components
+                            q = "','".join(vals)
+                            conds.append(f"source.\"{col}\" IN ('{q}')")
+            if conds:
+                neg_parts.append(f"CASE WHEN ({' OR '.join(conds)}) THEN {w} ELSE 0 END")
+
+        # Combine all scoring parts into raw expression
         all_parts = []
-        
-        if case_parts:
-            base_case = "CASE\n        " + "\n        ".join(case_parts) + "\n        ELSE 0\n    END"
-            all_parts.append(base_case)
-        
-        all_parts.extend(bonus_expressions)
-        all_parts.extend(negative_expressions)
-        
+        if case_clauses:
+            all_parts.append("CASE\n    " + "\n    ".join(case_clauses) + "\n    ELSE 0\nEND")
+        all_parts += bonus_parts + neg_parts
+
+        raw = "0"
         if all_parts:
-            joined_parts = ' +\n        '.join(all_parts)
-            scoring_expr = f"(\n        {joined_parts}\n    ) AS aerospace_score"
-        else:
-            scoring_expr = "0 AS aerospace_score"
-        
-        # Create scored view
-        view_name = f"{table_name}_aerospace_scored"
-        sql_parts.append(f"-- Scored view for {table_name}")
-        sql_parts.append(f"CREATE OR REPLACE VIEW {schema_name}.{view_name} AS")
-        sql_parts.append(f"SELECT *,")
-        sql_parts.append(f"    {scoring_expr},")
-        sql_parts.append(f"    ARRAY[]::text[] AS matched_keywords,")
-        sql_parts.append(f"    '{table_name}' AS source_table")
-        sql_parts.append(f"FROM {schema_name}.{table_name}_aerospace_filtered")
-        sql_parts.append(f"WHERE (")
-        sql_parts.append(f"    {scoring_expr.replace(' AS aerospace_score', '')}")
-        sql_parts.append(f") > 0;\n")
-    
+            raw = "(\n    " + " +\n    ".join(all_parts) + "\n)"
+        expr = f"{raw} AS aerospace_score"
+
+        # Emit the CREATE VIEW block for this table
+        view = f"{tbl}_aerospace_scored"
+        sql_parts += [
+            f"-- Scored view for {tbl}",
+            f"CREATE OR REPLACE VIEW {sch}.{view} AS",
+            "SELECT",
+            "  source.*,",
+            f"  {expr},",
+            "  ARRAY[]::text[] AS matched_keywords,",
+            f"  '{tbl}' AS source_table",
+            f"FROM {sch}.{tbl}_aerospace_filtered filtered",
+            f"JOIN {sch}.{tbl} source ON filtered.osm_id = source.osm_id",
+            "WHERE",
+            f"  {raw} > 0;",
+            ""
+        ]
+
     return "\n".join(sql_parts)
 
 def main():
-    print("Generating scoring SQL...")
-    
-    try:
-        scoring, negative_signals, schema = load_configs()
-        scoring_sql = generate_scoring_sql(scoring, negative_signals, schema)
-        
-        with open('aerospace_scoring/scoring.sql', 'w') as f:
-            f.write(scoring_sql)
-        
-        print("✓ Scoring SQL generated: aerospace_scoring/scoring.sql")
-        
-    except Exception as e:
-        print(f"✗ Failed: {e}")
-        return 1
-    
-    return 0
+    print("Generating scoring SQL…")
+    scoring, negative, schema = load_configs()
+    sql_text = generate_scoring_sql(scoring, negative, schema)
+    Path('aerospace_scoring/scoring.sql').write_text(sql_text)
+    print("✓ Scoring SQL written to aerospace_scoring/scoring.sql")
 
 if __name__ == "__main__":
-    exit(main())
+    main()
 EOF
 
 # Create corrected assemble_sql.py
 cat > aerospace_scoring/assemble_sql.py << 'EOF'
 #!/usr/bin/env python3
-"""Assemble complete SQL script for aerospace supplier scoring - CORRECTED VERSION"""
+"""Assemble complete SQL script for aerospace supplier scoring – FINAL VERSION"""
 
 import yaml
 import json
@@ -924,6 +860,7 @@ from pathlib import Path
 from datetime import datetime
 
 def load_configs():
+    """Load thresholds, seed_columns, and schema metadata."""
     configs = {}
     for name in ['thresholds', 'seed_columns']:
         with open(f'aerospace_scoring/{name}.yaml', 'r') as f:
@@ -933,44 +870,32 @@ def load_configs():
     return configs
 
 def generate_output_table_ddl(seed_columns, schema_name):
-    table_name = seed_columns['output_table']['name']
-    ddl = f"""-- Create aerospace supplier candidates table in {schema_name}
-DROP TABLE IF EXISTS {schema_name}.{table_name} CASCADE;
-CREATE TABLE {schema_name}.{table_name} (
-    osm_id BIGINT,
-    osm_type VARCHAR(50),
-    name TEXT,
-    operator TEXT,
-    website TEXT,
-    phone TEXT,
-    postcode VARCHAR(20),
-    street_address TEXT,
-    city TEXT,
-    landuse_type TEXT,
-    building_type TEXT,
-    industrial_type TEXT,
-    office_type TEXT,
-    description TEXT,
-    geometry GEOMETRY,
-    latitude DOUBLE PRECISION,
-    longitude DOUBLE PRECISION,
-    aerospace_score INTEGER,
-    tier_classification VARCHAR(50),
-    matched_keywords TEXT[],
-    confidence_level VARCHAR(20),
-    created_at TIMESTAMP,
-    source_table VARCHAR(50)
-);
+    tbl = seed_columns['output_table']['name']
+    cols = seed_columns['output_table'].get('columns', [])
+    if not cols:
+        raise ValueError("seed_columns.yaml must include output_table.columns")
+    col_defs = [f"    {c['name']} {c['type']}" for c in cols]
+    ddl = [
+        f"-- Create aerospace supplier candidates table in {schema_name}",
+        f"DROP TABLE IF EXISTS {schema_name}.{tbl} CASCADE;",
+        f"CREATE TABLE {schema_name}.{tbl} (",
+        ",\n".join(col_defs),
+        ");",
+        "",
+        "-- Indexes",
+        f"CREATE INDEX idx_{tbl}_score ON {schema_name}.{tbl}(aerospace_score);",
+        f"CREATE INDEX idx_{tbl}_tier ON {schema_name}.{tbl}(tier_classification);",
+        f"CREATE INDEX idx_{tbl}_postcode ON {schema_name}.{tbl}(postcode);",
+        f"CREATE INDEX idx_{tbl}_geom ON {schema_name}.{tbl} USING GIST(geometry);"
+    ]
+    return "\n".join(ddl)
 
--- Create indexes
-CREATE INDEX idx_aerospace_score ON {schema_name}.{table_name}(aerospace_score);
-CREATE INDEX idx_tier ON {schema_name}.{table_name}(tier_classification);
-CREATE INDEX idx_postcode ON {schema_name}.{table_name}(postcode);
-CREATE INDEX idx_geom ON {schema_name}.{table_name} USING GIST(geometry);"""
-    return ddl
-
-def generate_insert_sql(schema, thresholds):
+def generate_insert_sql(schema, thresholds, seed_columns):
+    """
+    Generate INSERT SQL using correct CTE+JOIN logic.
+    """
     schema_name = schema.get('schema', 'public')
+    tbl = seed_columns['output_table']['name']
     min_score = thresholds.get('filter_minimum_score', 10)
     max_cands = thresholds.get('max_candidates', 5000)
 
@@ -989,48 +914,60 @@ def generate_insert_sql(schema, thresholds):
         ELSE 'very_low'
     END"""
 
-    insert_sql = f"""-- Insert enriched aerospace supplier candidates
-INSERT INTO {schema_name}.aerospace_supplier_candidates (
-    osm_id, osm_type, name, operator, website, phone, postcode, street_address, city,
-    landuse_type, building_type, industrial_type, office_type, description,
-    geometry, latitude, longitude, aerospace_score, tier_classification,
-    matched_keywords, confidence_level, created_at, source_table
-)
-SELECT
-    osm_id,
-    source_table::VARCHAR AS osm_type,
-    COALESCE(name, operator) AS name,
-    operator,
-    COALESCE(website, tags->'contact:website') AS website,
-    COALESCE(tags->'phone', tags->'contact:phone') AS phone,
-    tags->'addr:postcode' AS postcode,
-    tags->'addr:street'   AS street_address,
-    COALESCE(tags->'addr:city', tags->'addr:town') AS city,
-    landuse               AS landuse_type,
-    building              AS building_type,
-    industrial            AS industrial_type,
-    office                AS office_type,
-    tags->'description'   AS description,
-    way                   AS geometry,
-    ST_Y(ST_Transform(ST_Centroid(way), 4326)) AS latitude,
-    ST_X(ST_Transform(ST_Centroid(way), 4326)) AS longitude,
-    aerospace_score,
-    {tier_case}          AS tier_classification,
-    matched_keywords,
-    {confidence_case}    AS confidence_level,
-    NOW()                AS created_at,
-    source_table
-FROM (
-    SELECT * FROM {schema_name}.planet_osm_point_aerospace_scored
-    UNION ALL
-    SELECT * FROM {schema_name}.planet_osm_polygon_aerospace_scored
-    UNION ALL
-    SELECT * FROM {schema_name}.planet_osm_line_aerospace_scored
-) combined
-WHERE aerospace_score >= {min_score}
-ORDER BY aerospace_score DESC
-LIMIT {max_cands};"""
-    return insert_sql
+    cols = seed_columns['output_table']['columns']
+    col_names = ", ".join(c['name'] for c in cols)
+
+    select_exprs = []
+    for c in cols:
+        n = c['name']
+        if n == 'osm_id':
+            select_exprs.append("k.osm_id")
+        elif n == 'osm_type':
+            select_exprs.append("k.source_table AS osm_type")
+        elif n == 'aerospace_score':
+            select_exprs.append("k.aerospace_score")
+        elif n == 'tier_classification':
+            select_exprs.append(f"{tier_case} AS tier_classification")
+        elif n == 'confidence_level':
+            select_exprs.append(f"{confidence_case} AS confidence_level")
+        elif n == 'created_at':
+            select_exprs.append("NOW() AS created_at")
+        elif n == 'phone':
+            select_exprs.append(
+                "COALESCE("
+                "p.tags->'phone', p.tags->'contact:phone', "
+                "l.tags->'phone', l.tags->'contact:phone', "
+                "g.tags->'phone', g.tags->'contact:phone'"
+                ") AS phone"
+            )
+        else:
+            select_exprs.append(f"COALESCE(p.{n}, l.{n}, g.{n}) AS {n}")
+
+    insert = [
+        f"-- Insert aerospace supplier candidates into {schema_name}.{tbl}",
+        "WITH candidate_keys AS (",
+        f"  SELECT osm_id, aerospace_score, source_table FROM {schema_name}.planet_osm_point_aerospace_scored",
+        f"  UNION ALL",
+        f"  SELECT osm_id, aerospace_score, source_table FROM {schema_name}.planet_osm_line_aerospace_scored",
+        f"  UNION ALL",
+        f"  SELECT osm_id, aerospace_score, source_table FROM {schema_name}.planet_osm_polygon_aerospace_scored",
+        "), unique_keys AS (",
+        "  SELECT osm_id, source_table, MAX(aerospace_score) AS aerospace_score",
+        "  FROM candidate_keys",
+        "  GROUP BY osm_id, source_table",
+        ")",
+        f"INSERT INTO {schema_name}.{tbl} ({col_names})",
+        "SELECT",
+        "  " + ",\n  ".join(select_exprs),
+        f"FROM unique_keys k",
+        f"LEFT JOIN {schema_name}.planet_osm_point_aerospace_scored   p ON k.osm_id = p.osm_id AND k.source_table='point'",
+        f"LEFT JOIN {schema_name}.planet_osm_line_aerospace_scored    l ON k.osm_id = l.osm_id AND k.source_table='line'",
+        f"LEFT JOIN {schema_name}.planet_osm_polygon_aerospace_scored g ON k.osm_id = g.osm_id AND k.source_table='polygon'",
+        f"WHERE k.aerospace_score >= {min_score}",
+        f"ORDER BY k.aerospace_score DESC",
+        f"LIMIT {max_cands};"
+    ]
+    return "\n".join(insert)
 
 def assemble_complete_sql(configs):
     schema = configs['schema']
@@ -1039,63 +976,50 @@ def assemble_complete_sql(configs):
     seed_columns = configs['seed_columns']
 
     try:
-        exclusions_sql = Path('aerospace_scoring/exclusions.sql').read_text()
+        excl = Path('aerospace_scoring/exclusions.sql').read_text()
     except FileNotFoundError:
-        exclusions_sql = "-- Run generate_exclusions.py first"
+        excl = "-- Run generate_exclusions.py first"
     try:
-        scoring_sql = Path('aerospace_scoring/scoring.sql').read_text()
+        score = Path('aerospace_scoring/scoring.sql').read_text()
     except FileNotFoundError:
-        scoring_sql = "-- Run generate_scoring.py first"
+        score = "-- Run generate_scoring.py first"
 
-    table_ddl = generate_output_table_ddl(seed_columns, schema_name)
-    insert_sql = generate_insert_sql(schema, thresholds)
+    ddl = generate_output_table_ddl(seed_columns, schema_name)
+    ins = generate_insert_sql(schema, thresholds, seed_columns)
+    tbl = seed_columns['output_table']['name']
 
-    complete_sql = f"""-- UK AEROSPACE SUPPLIER IDENTIFICATION SYSTEM
--- Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
--- Schema: {schema_name}
--- CORRECTED VERSION with proper schema detection
+    header = [
+        "-- UK AEROSPACE SUPPLIER IDENTIFICATION SYSTEM",
+        f"-- Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        f"-- Schema: {schema_name}",
+        ""
+    ]
+    steps = [
+        "-- STEP 1: Apply exclusion filters", excl, "",
+        "-- STEP 2: Apply scoring rules", score, "",
+        "-- STEP 3: Create output table", ddl, "",
+        "-- STEP 4: Insert final results", ins, "",
+        "-- STEP 5: Analysis queries",
+        f"SELECT 'Total candidates' AS metric, COUNT(*) AS value FROM {schema_name}.{tbl};",
+        f"SELECT 'With contact info', COUNT(*) FROM {schema_name}.{tbl} WHERE website IS NOT NULL OR phone IS NOT NULL;",
+        f"SELECT 'High confidence', COUNT(*) FROM {schema_name}.{tbl} WHERE confidence_level = 'high';",
+        "",
+        "-- Classification breakdown",
+        f"SELECT tier_classification, COUNT(*) AS count, AVG(aerospace_score) AS avg_score FROM {schema_name}.{tbl} GROUP BY tier_classification ORDER BY avg_score DESC;",
+        "",
+        "-- Top candidates",
+        f"SELECT name, tier_classification, aerospace_score, postcode FROM {schema_name}.{tbl} WHERE tier_classification IN ('tier1_candidate','tier2_candidate') ORDER BY aerospace_score DESC LIMIT 20;"
+    ]
 
--- STEP 1: Apply exclusion filters
-{exclusions_sql}
-
--- STEP 2: Apply scoring rules
-{scoring_sql}
-
--- STEP 3: Create output table
-{table_ddl}
-
--- STEP 4: Insert final results
-{insert_sql}
-
--- STEP 5: Analysis queries
-SELECT 'Total candidates' AS metric, COUNT(*) AS value FROM {schema_name}.aerospace_supplier_candidates
-UNION ALL
-SELECT 'With contact info', COUNT(*) FROM {schema_name}.aerospace_supplier_candidates WHERE website IS NOT NULL OR phone IS NOT NULL
-UNION ALL
-SELECT 'High confidence', COUNT(*) FROM {schema_name}.aerospace_supplier_candidates WHERE confidence_level = 'high';
-
--- Classification breakdown
-SELECT tier_classification, COUNT(*) AS count, AVG(aerospace_score) AS avg_score
-FROM {schema_name}.aerospace_supplier_candidates
-GROUP BY tier_classification
-ORDER BY avg_score DESC;
-
--- Top candidates
-SELECT name, tier_classification, aerospace_score, postcode
-FROM {schema_name}.aerospace_supplier_candidates
-WHERE tier_classification IN ('tier1_candidate','tier2_candidate')
-ORDER BY aerospace_score DESC
-LIMIT 20;
-"""
-    return complete_sql
+    return "\n".join(header + steps)
 
 def main():
-    print("Assembling complete SQL script...")
+    print("Assembling complete SQL script…")
     try:
-        configs = load_configs()
-        complete_sql = assemble_complete_sql(configs)
-        Path('aerospace_scoring/compute_aerospace_scores.sql').write_text(complete_sql)
-        print("✓ Complete SQL script assembled: aerospace_scoring/compute_aerospace_scores.sql")
+        cfg = load_configs()
+        sql = assemble_complete_sql(cfg)
+        Path('aerospace_scoring/compute_aerospace_scores.sql').write_text(sql)
+        print("✓ SQL script assembled: aerospace_scoring/compute_aerospace_scores.sql")
     except Exception as e:
         print(f"✗ Failed: {e}")
         return 1

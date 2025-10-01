@@ -1,135 +1,90 @@
 # Output table structure and column definitions
+
 output_table:
   name: "aerospace_supplier_candidates"
   description: "Tier-2 aerospace supplier candidates from UK OSM data"
+  columns:
+    # Identification columns
+    - name: osm_id
+      type: bigint
+      description: "Original OSM object ID"
+    - name: osm_type
+      type: varchar(50)
+      description: "Source OSM table"
+    - name: name
+      type: text
+      description: "Primary name (fallback to operator or brand)"
+    - name: operator
+      type: text
+      description: "Operating company"
 
-# Core identification columns
-identification_columns:
-  - column_name: "osm_id"
-    source_column: "osm_id"
-    data_type: "bigint"
-    description: "Original OSM object ID"
-    
-  - column_name: "osm_type"
-    source_column: "source_table"
-    data_type: "varchar(50)"
-    description: "Source OSM table"
-    
-  - column_name: "name"
-    source_column: "name"
-    data_type: "text"
-    description: "Primary name"
-    fallback_columns: ["operator", "brand"]
-    
-  - column_name: "operator"
-    source_column: "operator"
-    data_type: "text"
-    description: "Operating company"
+    # Contact information
+    - name: website
+      type: text
+      description: "Website URL (fallback to contact:website)"
+    - name: phone
+      type: text
+      description: "Phone number (fallback to contact:phone)"
 
-# Contact information
-contact_columns:
-  - column_name: "website"
-    source_column: "website"
-    data_type: "text"
-    description: "Website URL"
-    fallback_columns: ["contact:website"]
-    
-  - column_name: "phone"
-    source_column: "phone"
-    data_type: "text"
-    description: "Phone number"
-    fallback_columns: ["contact:phone"]
+    # Address components
+    - name: postcode
+      type: varchar(20)
+      description: "UK postal code"
+    - name: street_address
+      type: text
+      description: "Street address"
+    - name: city
+      type: text
+      description: "City (fallback to town)"
 
-# Address components
-address_columns:
-  - column_name: "postcode"
-    source_column: "addr:postcode"
-    data_type: "varchar(20)"
-    description: "UK postal code"
-    
-  - column_name: "street_address"
-    source_column: "addr:street"
-    data_type: "text"
-    description: "Street address"
-    
-  - column_name: "city"
-    source_column: "addr:city"
-    data_type: "text"
-    description: "City"
-    fallback_columns: ["addr:town"]
+    # Industrial classification
+    - name: landuse_type
+      type: text
+      description: "Land use type"
+    - name: building_type
+      type: text
+      description: "Building type"
+    - name: industrial_type
+      type: text
+      description: "Industrial classification (fallback to craft)"
+    - name: office_type
+      type: text
+      description: "Office classification"
 
-# Industrial classification
-classification_columns:
-  - column_name: "landuse_type"
-    source_column: "landuse"
-    data_type: "text"
-    description: "Land use type"
-    
-  - column_name: "building_type"
-    source_column: "building"
-    data_type: "text"
-    description: "Building type"
-    
-  - column_name: "industrial_type"
-    source_column: "industrial"
-    data_type: "text"
-    description: "Industrial type"
-    fallback_columns: ["craft"]
-    
-  - column_name: "office_type"
-    source_column: "office"
-    data_type: "text"
-    description: "Office type"
+    # Descriptive information
+    - name: description
+      type: text
+      description: "Description"
 
-# Descriptive information
-descriptive_columns:
-  - column_name: "description"
-    source_column: "description"
-    data_type: "text"
-    description: "Description"
+    # Spatial data
+    - name: geometry
+      type: geometry
+      description: "PostGIS geometry"
+    - name: latitude
+      type: double precision
+      description: "Latitude (centroid)"
+    - name: longitude
+      type: double precision
+      description: "Longitude (centroid)"
 
-# Spatial data
-spatial_columns:
-  - column_name: "geometry"
-    source_column: "way"
-    data_type: "geometry"
-    description: "PostGIS geometry"
-    
-  - column_name: "latitude"
-    source_expression: "ST_Y(ST_Transform(ST_Centroid(way), 4326))"
-    data_type: "double precision"
-    description: "Latitude"
-    
-  - column_name: "longitude"
-    source_expression: "ST_X(ST_Transform(ST_Centroid(way), 4326))"
-    data_type: "double precision"
-    description: "Longitude"
+    # Scoring and tier
+    - name: aerospace_score
+      type: integer
+      description: "Computed aerospace relevance score"
+    - name: tier_classification
+      type: varchar(50)
+      description: "Supplier tier classification"
+    - name: matched_keywords
+      type: text[]
+      description: "List of matched keywords"
 
-# Scoring columns
-scoring_columns:
-  - column_name: "aerospace_score"
-    source_expression: "computed"
-    data_type: "integer"
-    description: "Aerospace relevance score"
-    
-  - column_name: "tier_classification"
-    source_expression: "computed"
-    data_type: "varchar(50)"
-    description: "Supplier tier"
-    
-  - column_name: "matched_keywords"
-    source_expression: "computed"
-    data_type: "text[]"
-    description: "Matched keywords"
-
-# Metadata
-metadata_columns:
-  - column_name: "created_at"
-    source_expression: "NOW()"
-    data_type: "timestamp"
-    description: "Creation timestamp"
-    
-  - column_name: "confidence_level"
-    source_expression: "computed"
-    data_type: "varchar(20)"
-    description: "Confidence level"
+    # Metadata
+    - name: confidence_level
+      type: varchar(20)
+      description: "Computed confidence level"
+    - name: created_at
+      type: timestamp
+      description: "Record creation timestamp"
+    - name: source_table
+      type: varchar(50)
+      description: "Original source table name"

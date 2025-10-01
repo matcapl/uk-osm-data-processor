@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Assemble complete SQL script for aerospace supplier scoring - CORRECTED VERSION"""
+"""Assemble complete SQL script for aerospace supplier scoring – FINAL VERSION"""
 
 import yaml
 import json
@@ -7,6 +7,7 @@ from pathlib import Path
 from datetime import datetime
 
 def load_configs():
+    """Load thresholds, seed_columns, and schema metadata."""
     configs = {}
     for name in ['thresholds', 'seed_columns']:
         with open(f'aerospace_scoring/{name}.yaml', 'r') as f:
@@ -16,44 +17,32 @@ def load_configs():
     return configs
 
 def generate_output_table_ddl(seed_columns, schema_name):
-    table_name = seed_columns['output_table']['name']
-    ddl = f"""-- Create aerospace supplier candidates table in {schema_name}
-DROP TABLE IF EXISTS {schema_name}.{table_name} CASCADE;
-CREATE TABLE {schema_name}.{table_name} (
-    osm_id BIGINT,
-    osm_type VARCHAR(50),
-    name TEXT,
-    operator TEXT,
-    website TEXT,
-    phone TEXT,
-    postcode VARCHAR(20),
-    street_address TEXT,
-    city TEXT,
-    landuse_type TEXT,
-    building_type TEXT,
-    industrial_type TEXT,
-    office_type TEXT,
-    description TEXT,
-    geometry GEOMETRY,
-    latitude DOUBLE PRECISION,
-    longitude DOUBLE PRECISION,
-    aerospace_score INTEGER,
-    tier_classification VARCHAR(50),
-    matched_keywords TEXT[],
-    confidence_level VARCHAR(20),
-    created_at TIMESTAMP,
-    source_table VARCHAR(50)
-);
+    tbl = seed_columns['output_table']['name']
+    cols = seed_columns['output_table'].get('columns', [])
+    if not cols:
+        raise ValueError("seed_columns.yaml must include output_table.columns")
+    col_defs = [f"    {c['name']} {c['type']}" for c in cols]
+    ddl = [
+        f"-- Create aerospace supplier candidates table in {schema_name}",
+        f"DROP TABLE IF EXISTS {schema_name}.{tbl} CASCADE;",
+        f"CREATE TABLE {schema_name}.{tbl} (",
+        ",\n".join(col_defs),
+        ");",
+        "",
+        "-- Indexes",
+        f"CREATE INDEX idx_{tbl}_score ON {schema_name}.{tbl}(aerospace_score);",
+        f"CREATE INDEX idx_{tbl}_tier ON {schema_name}.{tbl}(tier_classification);",
+        f"CREATE INDEX idx_{tbl}_postcode ON {schema_name}.{tbl}(postcode);",
+        f"CREATE INDEX idx_{tbl}_geom ON {schema_name}.{tbl} USING GIST(geometry);"
+    ]
+    return "\n".join(ddl)
 
--- Create indexes
-CREATE INDEX idx_aerospace_score ON {schema_name}.{table_name}(aerospace_score);
-CREATE INDEX idx_tier ON {schema_name}.{table_name}(tier_classification);
-CREATE INDEX idx_postcode ON {schema_name}.{table_name}(postcode);
-CREATE INDEX idx_geom ON {schema_name}.{table_name} USING GIST(geometry);"""
-    return ddl
-
-def generate_insert_sql(schema, thresholds):
+def generate_insert_sql(schema, thresholds, seed_columns):
+    """
+    Generate INSERT SQL using correct CTE+JOIN logic.
+    """
     schema_name = schema.get('schema', 'public')
+    tbl = seed_columns['output_table']['name']
     min_score = thresholds.get('filter_minimum_score', 10)
     max_cands = thresholds.get('max_candidates', 5000)
 
@@ -72,48 +61,60 @@ def generate_insert_sql(schema, thresholds):
         ELSE 'very_low'
     END"""
 
-    insert_sql = f"""-- Insert enriched aerospace supplier candidates
-INSERT INTO {schema_name}.aerospace_supplier_candidates (
-    osm_id, osm_type, name, operator, website, phone, postcode, street_address, city,
-    landuse_type, building_type, industrial_type, office_type, description,
-    geometry, latitude, longitude, aerospace_score, tier_classification,
-    matched_keywords, confidence_level, created_at, source_table
-)
-SELECT
-    osm_id,
-    source_table::VARCHAR AS osm_type,
-    COALESCE(name, operator) AS name,
-    operator,
-    COALESCE(website, tags->'contact:website') AS website,
-    COALESCE(tags->'phone', tags->'contact:phone') AS phone,
-    tags->'addr:postcode' AS postcode,
-    tags->'addr:street'   AS street_address,
-    COALESCE(tags->'addr:city', tags->'addr:town') AS city,
-    landuse               AS landuse_type,
-    building              AS building_type,
-    industrial            AS industrial_type,
-    office                AS office_type,
-    tags->'description'   AS description,
-    way                   AS geometry,
-    ST_Y(ST_Transform(ST_Centroid(way), 4326)) AS latitude,
-    ST_X(ST_Transform(ST_Centroid(way), 4326)) AS longitude,
-    aerospace_score,
-    {tier_case}          AS tier_classification,
-    matched_keywords,
-    {confidence_case}    AS confidence_level,
-    NOW()                AS created_at,
-    source_table
-FROM (
-    SELECT * FROM {schema_name}.planet_osm_point_aerospace_scored
-    UNION ALL
-    SELECT * FROM {schema_name}.planet_osm_polygon_aerospace_scored
-    UNION ALL
-    SELECT * FROM {schema_name}.planet_osm_line_aerospace_scored
-) combined
-WHERE aerospace_score >= {min_score}
-ORDER BY aerospace_score DESC
-LIMIT {max_cands};"""
-    return insert_sql
+    cols = seed_columns['output_table']['columns']
+    col_names = ", ".join(c['name'] for c in cols)
+
+    select_exprs = []
+    for c in cols:
+        n = c['name']
+        if n == 'osm_id':
+            select_exprs.append("k.osm_id")
+        elif n == 'osm_type':
+            select_exprs.append("k.source_table AS osm_type")
+        elif n == 'aerospace_score':
+            select_exprs.append("k.aerospace_score")
+        elif n == 'tier_classification':
+            select_exprs.append(f"{tier_case} AS tier_classification")
+        elif n == 'confidence_level':
+            select_exprs.append(f"{confidence_case} AS confidence_level")
+        elif n == 'created_at':
+            select_exprs.append("NOW() AS created_at")
+        elif n == 'phone':
+            select_exprs.append(
+                "COALESCE("
+                "p.tags->'phone', p.tags->'contact:phone', "
+                "l.tags->'phone', l.tags->'contact:phone', "
+                "g.tags->'phone', g.tags->'contact:phone'"
+                ") AS phone"
+            )
+        else:
+            select_exprs.append(f"COALESCE(p.{n}, l.{n}, g.{n}) AS {n}")
+
+    insert = [
+        f"-- Insert aerospace supplier candidates into {schema_name}.{tbl}",
+        "WITH candidate_keys AS (",
+        f"  SELECT osm_id, aerospace_score, source_table FROM {schema_name}.planet_osm_point_aerospace_scored",
+        f"  UNION ALL",
+        f"  SELECT osm_id, aerospace_score, source_table FROM {schema_name}.planet_osm_line_aerospace_scored",
+        f"  UNION ALL",
+        f"  SELECT osm_id, aerospace_score, source_table FROM {schema_name}.planet_osm_polygon_aerospace_scored",
+        "), unique_keys AS (",
+        "  SELECT osm_id, source_table, MAX(aerospace_score) AS aerospace_score",
+        "  FROM candidate_keys",
+        "  GROUP BY osm_id, source_table",
+        ")",
+        f"INSERT INTO {schema_name}.{tbl} ({col_names})",
+        "SELECT",
+        "  " + ",\n  ".join(select_exprs),
+        f"FROM unique_keys k",
+        f"LEFT JOIN {schema_name}.planet_osm_point_aerospace_scored   p ON k.osm_id = p.osm_id AND k.source_table='point'",
+        f"LEFT JOIN {schema_name}.planet_osm_line_aerospace_scored    l ON k.osm_id = l.osm_id AND k.source_table='line'",
+        f"LEFT JOIN {schema_name}.planet_osm_polygon_aerospace_scored g ON k.osm_id = g.osm_id AND k.source_table='polygon'",
+        f"WHERE k.aerospace_score >= {min_score}",
+        f"ORDER BY k.aerospace_score DESC",
+        f"LIMIT {max_cands};"
+    ]
+    return "\n".join(insert)
 
 def assemble_complete_sql(configs):
     schema = configs['schema']
@@ -122,63 +123,50 @@ def assemble_complete_sql(configs):
     seed_columns = configs['seed_columns']
 
     try:
-        exclusions_sql = Path('aerospace_scoring/exclusions.sql').read_text()
+        excl = Path('aerospace_scoring/exclusions.sql').read_text()
     except FileNotFoundError:
-        exclusions_sql = "-- Run generate_exclusions.py first"
+        excl = "-- Run generate_exclusions.py first"
     try:
-        scoring_sql = Path('aerospace_scoring/scoring.sql').read_text()
+        score = Path('aerospace_scoring/scoring.sql').read_text()
     except FileNotFoundError:
-        scoring_sql = "-- Run generate_scoring.py first"
+        score = "-- Run generate_scoring.py first"
 
-    table_ddl = generate_output_table_ddl(seed_columns, schema_name)
-    insert_sql = generate_insert_sql(schema, thresholds)
+    ddl = generate_output_table_ddl(seed_columns, schema_name)
+    ins = generate_insert_sql(schema, thresholds, seed_columns)
+    tbl = seed_columns['output_table']['name']
 
-    complete_sql = f"""-- UK AEROSPACE SUPPLIER IDENTIFICATION SYSTEM
--- Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
--- Schema: {schema_name}
--- CORRECTED VERSION with proper schema detection
+    header = [
+        "-- UK AEROSPACE SUPPLIER IDENTIFICATION SYSTEM",
+        f"-- Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        f"-- Schema: {schema_name}",
+        ""
+    ]
+    steps = [
+        "-- STEP 1: Apply exclusion filters", excl, "",
+        "-- STEP 2: Apply scoring rules", score, "",
+        "-- STEP 3: Create output table", ddl, "",
+        "-- STEP 4: Insert final results", ins, "",
+        "-- STEP 5: Analysis queries",
+        f"SELECT 'Total candidates' AS metric, COUNT(*) AS value FROM {schema_name}.{tbl};",
+        f"SELECT 'With contact info', COUNT(*) FROM {schema_name}.{tbl} WHERE website IS NOT NULL OR phone IS NOT NULL;",
+        f"SELECT 'High confidence', COUNT(*) FROM {schema_name}.{tbl} WHERE confidence_level = 'high';",
+        "",
+        "-- Classification breakdown",
+        f"SELECT tier_classification, COUNT(*) AS count, AVG(aerospace_score) AS avg_score FROM {schema_name}.{tbl} GROUP BY tier_classification ORDER BY avg_score DESC;",
+        "",
+        "-- Top candidates",
+        f"SELECT name, tier_classification, aerospace_score, postcode FROM {schema_name}.{tbl} WHERE tier_classification IN ('tier1_candidate','tier2_candidate') ORDER BY aerospace_score DESC LIMIT 20;"
+    ]
 
--- STEP 1: Apply exclusion filters
-{exclusions_sql}
-
--- STEP 2: Apply scoring rules
-{scoring_sql}
-
--- STEP 3: Create output table
-{table_ddl}
-
--- STEP 4: Insert final results
-{insert_sql}
-
--- STEP 5: Analysis queries
-SELECT 'Total candidates' AS metric, COUNT(*) AS value FROM {schema_name}.aerospace_supplier_candidates
-UNION ALL
-SELECT 'With contact info', COUNT(*) FROM {schema_name}.aerospace_supplier_candidates WHERE website IS NOT NULL OR phone IS NOT NULL
-UNION ALL
-SELECT 'High confidence', COUNT(*) FROM {schema_name}.aerospace_supplier_candidates WHERE confidence_level = 'high';
-
--- Classification breakdown
-SELECT tier_classification, COUNT(*) AS count, AVG(aerospace_score) AS avg_score
-FROM {schema_name}.aerospace_supplier_candidates
-GROUP BY tier_classification
-ORDER BY avg_score DESC;
-
--- Top candidates
-SELECT name, tier_classification, aerospace_score, postcode
-FROM {schema_name}.aerospace_supplier_candidates
-WHERE tier_classification IN ('tier1_candidate','tier2_candidate')
-ORDER BY aerospace_score DESC
-LIMIT 20;
-"""
-    return complete_sql
+    return "\n".join(header + steps)
 
 def main():
-    print("Assembling complete SQL script...")
+    print("Assembling complete SQL script…")
     try:
-        configs = load_configs()
-        complete_sql = assemble_complete_sql(configs)
-        Path('aerospace_scoring/compute_aerospace_scores.sql').write_text(complete_sql)
-        print("✓ Complete SQL script assembled: aerospace_scoring/compute_aerospace_scores.sql")
+        cfg = load_configs()
+        sql = assemble_complete_sql(cfg)
+        Path('aerospace_scoring/compute_aerospace_scores.sql').write_text(sql)
+        print("✓ SQL script assembled: aerospace_scoring/compute_aerospace_scores.sql")
     except Exception as e:
         print(f"✗ Failed: {e}")
         return 1

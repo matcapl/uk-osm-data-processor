@@ -1,5 +1,5 @@
 Aerospace Pipeline Diagnostics
-Generated: 2025-09-29 09:50:44.493960
+Generated: 2025-10-01 09:12:44.501139
 Schema: public
 
 Available tables/views:
@@ -20,10 +20,11 @@ Available tables/views:
   planet_osm_polygon
   planet_osm_polygon_aerospace_filtered
   planet_osm_polygon_aerospace_scored
+  planet_osm_polygon_simple_filtered
+  planet_osm_polygon_simple_scored
   planet_osm_rels
   planet_osm_roads
   planet_osm_roads_aerospace_filtered
-  planet_osm_roads_aerospace_scored
   planet_osm_users
   planet_osm_ways
   spatial_ref_sys
@@ -34,4 +35,4 @@ Expected views status:
   ✓ planet_osm_polygon_aerospace_filtered: 3546 rows
   ✓ planet_osm_point_aerospace_scored: 197 rows
   ✓ planet_osm_line_aerospace_scored: 1806 rows
-  ✓ planet_osm_polygon_aerospace_scored: 95 rows
+  ✓ planet_osm_polygon_aerospace_scored: 2329 rows

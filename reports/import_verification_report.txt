@@ -1,7 +1,7 @@
 UK OSM Data Import Verification Report
 ==================================================
 
-Generated: 2025-09-29 09:49:34
+Generated: 2025-09-30 13:00:19
 Database: uk_osm_full
 Schema: public
 
@@ -20,9 +20,9 @@ Indexes: 21
 Constraints: 6
 
 Table Sizes:
-  planet_osm_point         : 104 MB
+  planet_osm_point         : 103 MB
   planet_osm_line          : 296 MB
-  planet_osm_polygon       : 5512 kB
+  planet_osm_polygon       : 5904 kB
   planet_osm_roads         : 15 MB
 
 TOP AMENITIES
@@ -76,5 +76,5 @@ Buildings in Central London:
 
 Major roads in UK:
   Results: 4
-  Execution time: 0.04s
+  Execution time: 0.03s
 
