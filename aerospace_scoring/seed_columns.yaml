@@ -6,85 +6,90 @@ output_table:
   columns:
     # Identification columns
     - name: osm_id
-      type: bigint
+      type: BIGINT
       description: "Original OSM object ID"
-    - name: osm_type
-      type: varchar(50)
+    - name: source_table
+      type: VARCHAR(50)
       description: "Source OSM table"
     - name: name
-      type: text
+      type: TEXT
       description: "Primary name (fallback to operator or brand)"
     - name: operator
-      type: text
+      type: TEXT
       description: "Operating company"
 
+    # Scores & tiers
+    - name: aerospace_score
+      type: INTEGER
+      description: "Computed aerospace relevance score"
+    - name: tier_classification
+      type: VARCHAR(50)
+      description: "Supplier tier classification"
+    - name: confidence_level
+      type: VARCHAR(50)
+      description: "Computed confidence level"
+
     # Contact information
-    - name: website
-      type: text
-      description: "Website URL (fallback to contact:website)"
     - name: phone
-      type: text
-      description: "Phone number (fallback to contact:phone)"
+      type: TEXT
+      description: "Phone number"
+    - name: email
+      type: TEXT
+      description: "Email address"
+    - name: website
+      type: TEXT
+      description: "Website URL"
 
     # Address components
     - name: postcode
-      type: varchar(20)
+      type: VARCHAR(20)
       description: "UK postal code"
     - name: street_address
-      type: text
+      type: TEXT
       description: "Street address"
     - name: city
-      type: text
+      type: TEXT
       description: "City (fallback to town)"
 
-    # Industrial classification
+    # Industrial classification (reserved for future mapping)
     - name: landuse_type
-      type: text
+      type: TEXT
       description: "Land use type"
     - name: building_type
-      type: text
+      type: TEXT
       description: "Building type"
     - name: industrial_type
-      type: text
+      type: TEXT
       description: "Industrial classification (fallback to craft)"
     - name: office_type
-      type: text
+      type: TEXT
       description: "Office classification"
 
     # Descriptive information
     - name: description
-      type: text
+      type: TEXT
       description: "Description"
-
-    # Spatial data
-    - name: geometry
-      type: geometry
-      description: "PostGIS geometry"
-    - name: latitude
-      type: double precision
-      description: "Latitude (centroid)"
-    - name: longitude
-      type: double precision
-      description: "Longitude (centroid)"
-
-    # Scoring and tier
-    - name: aerospace_score
-      type: integer
-      description: "Computed aerospace relevance score"
-    - name: tier_classification
-      type: varchar(50)
-      description: "Supplier tier classification"
     - name: matched_keywords
-      type: text[]
+      type: TEXT[]
       description: "List of matched keywords"
 
+    # Raw tags for post-processing
+    - name: tags_raw
+      type: HSTORE
+      description: "Raw OSM tags hstore"
+
+    # Location
+    - name: latitude
+      type: DOUBLE PRECISION
+      description: "Centroid latitude"
+    - name: longitude
+      type: DOUBLE PRECISION
+      description: "Centroid longitude"
+    - name: geometry
+      type: GEOMETRY(Point,4326)
+      description: "PostGIS geometry"
+
     # Metadata
-    - name: confidence_level
-      type: varchar(20)
-      description: "Computed confidence level"
     - name: created_at
-      type: timestamp
+      type: TIMESTAMP
       description: "Record creation timestamp"
-    - name: source_table
-      type: varchar(50)
-      description: "Original source table name"
