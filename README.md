@@ -194,3 +194,96 @@ uv run aerospace_scoring/run_aerospace_scoring.py
 ***
 
 **In essence**, `07_aerospace_pipeline.sh` is a monolithic shell orchestrator, while `run_aerospace_scoring.py` decomposes the same logic into Python-driven, `uv`-managed modules with improved observability. Both paths execute the same core steps: filter, score, assemble, insert, and verify.
+
+current state of play:
+
+# UK OSM Aerospace Scoring Pipeline: Detailed Step-by-Step Status & Issues
+
+**Main Takeaway:** Filtering and scoring views are generated correctly, but mismatched schemas, missing columns, and insert compatibility errors prevent final candidate population.
+
+***
+
+## 1. Schema Detection  
+-  **What Runs:**  
+  - `load_schema.py` inspects the database and writes `schema.json` with `"public"`.  
+-  **Status:** ✅ Works  
+-  **Embedded Issue:** None here—all tables found under `public`.  
+
+***
+
+## 2. Exclusion View Generation  
+-  **What Runs:**  
+  - `generate_exclusions.py` reads `exclusions.yaml` and creates three filtered views:  
+    - `public.planet_osm_point_aerospace_filtered` (263,722 rows)  
+    - `public.planet_osm_line_aerospace_filtered` (261,916 rows)  
+    - `public.planet_osm_polygon_aerospace_filtered` (3,546 rows)  
+    - **(Optionally) roads** view also created and populated.  
+-  **Status:** ✅ Works  
+-  **Embedded Issue:** None—row counts are nonzero and views exist.  
+
+***
+
+## 3. Scored View Generation  
+-  **What Runs:**  
+  - `generate_scoring.py` builds `scoring.sql` and executes it, producing scored views:  
+    - `planet_osm_point_aerospace_scored` (197 rows)  
+    - `planet_osm_line_aerospace_scored` (1,806 rows)  
+    - `planet_osm_polygon_aerospace_scored` (2,329 rows)  
+    - `planet_osm_roads_aerospace_scored` (should exist but diagnostics didn’t report rows)  
+-  **Status:** ✅ Partially Works  
+-  **Embedded Issues:**  
+  1. **`roads` scored view missing row count**—pipeline log halted before reporting, indicating possible failure to create or name mismatch.  
+  2. **Zero‐score filter removed correctly**, but any scoring logic errors (e.g. missing keywords) may undercount candidates.  
+
+***
+
+## 4. Column & Schema Consistency Checks  
+-  **What Runs:**  
+  - `column_mapper.py` and `schema_mapper.py` compare view schemas against `seed_columns.yaml`.  
+-  **Status:** ❌ Fails  
+-  **Issues Identified:**  
+  1. **Union Incompatibility:** Scored views have differing column counts (57 vs 81 columns), so `UNION` insert will break.  
+  2. **Missing Columns in Views:**  
+     - Address: `city`, `postcode`, `street`  
+     - Contact: `phone`, `email`  
+     - Metadata: `tags_raw`, `description`, `industrial_type`, `landuse_type`, `building_type`, `office_type`  
+     - Audit: `created_at`, `confidence_level`, `tier_classification`  
+     - Geometry: `geometry` (actual PostGIS type) and coordinates (`latitude`, `longitude`)  
+  3. **`compare_seed_columns.py`** shows YAML mismatches: extra fields `landuse_type`, `building_type`, `industrial_type`, `office_type`, `description`, `matched_keywords` not in `seed_columns.yaml`.  
+
+***
+
+## 5. Assembly & Final Table Insertion  
+-  **What Runs:**  
+  - `assemble_sql.py` inlines exclusions & scoring SQL, creates `aerospace_supplier_candidates` table with 24 columns, and attempts to `INSERT` via `UNION` of all scored views.  
+-  **Status:** ❌ Fails  
+-  **Issues Identified:**  
+  1. **Filtered view not found** (test.sh error: “relation planet_osm_point_aerospace_filtered does not exist”): indicates either schema mis-interpolation or view name mismatch in test script.  
+  2. **Union fails** due to column count and ordering mismatches.  
+  3. **Final table remains empty** (`0 rows`) because the INSERT did not run or inserted zero due to missing mapping.  
+
+***
+
+## 6. Diagnostics & Tests  
+-  **What Runs:**  
+  - `test.sh` checks filtered view existence and counts.  
+  - `check.txt` summarizes pipeline run with “Total candidates: 0.”  
+-  **Status:** ❌ Fails  
+-  **Issues Identified:**  
+  1. **view existence check** in `test.sh` references the wrong schema or name—filtered views exist under `public` but test looked for them unqualified or under `<schema>`.  
+  2. **Zero candidates** confirms insert never populated the final table.  
+
+***
+
+# Summary of Root Causes  
+1. **Schema/name mismatches** between generated views and test scripts.  
+2. **Column mismatches**: different column sets across views prevent `UNION`‐based insert.  
+3. **Missing field mappings**: key address, contact, metadata, audit, and geometry fields aren’t projected in scored views.  
+4. **Test script errors**: referencing nonexistent relations and failing to qualify schema.  
+
+# Next Focused Fixes  
+1. **Align view names & schema references** in test scripts with actual views (use `public.` prefix or proper `<schema>` interpolation).  
+2. **Unify columns** across all scored views: explicitly select the same set of columns (with NULL/defaults) in `generate_scoring.py`.  
+3. **Add missing mappings** in scored views for address (`tags->’addr:*’`), contact, metadata, and audit columns.  
+4. **Re-run assembly** to generate a correct `compute_aerospace_scores.sql` that inserts from compatible views.  
+5. **Validate** using `test.sh` once view names and column counts are consistent.

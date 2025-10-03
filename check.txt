@@ -1,5 +1,5 @@
 Aerospace Pipeline Diagnostics
-Generated: 2025-10-01 09:12:44.501139
+Generated: 2025-10-02 17:50:57.082721
 Schema: public
 
 Available tables/views:

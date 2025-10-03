@@ -1,5 +1,5 @@
 -- UK AEROSPACE SUPPLIER IDENTIFICATION SYSTEM
--- Generated on: 2025-10-02 11:36:55
+-- Generated on: 2025-10-02 17:50:55
 -- Schema: public
 
 -- STEP 1: Exclusions
@@ -42,7 +42,7 @@ WHERE ((("landuse" IS NULL OR "landuse" NOT IN ('residential', 'retail', 'commer
 
 -- STEP 2: Scoring (scored-view creation)
 -- Aerospace Supplier Scoring SQL
--- Generated: 2025-10-02T10:36:55.871337
+-- Generated: 2025-10-02T16:50:55.059597
 -- Schema: public
 
 -- Scored view for planet_osm_point

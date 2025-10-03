@@ -1,5 +1,5 @@
 -- Aerospace Supplier Scoring SQL
--- Generated: 2025-10-02T10:36:55.871337
+-- Generated: 2025-10-02T16:50:55.059597
 -- Schema: public
 
 -- Scored view for planet_osm_point
