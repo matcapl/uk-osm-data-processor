@@ -588,8 +588,8 @@ if [ $? -eq 0 ]; then
     # Show database info
     echo -e "${BLUE}=== Database Setup Summary ===${NC}"
     echo -e "${GREEN}Database: uk_osm_full${NC}"
-    echo -e "${GREEN}User: ukosm_user${NC}"
-    echo -e "${GREEN}Schema: osm_raw${NC}"
+    echo -e "${GREEN}User: ?${NC}"
+    echo -e "${GREEN}Schema: ?${NC}"
     echo -e "${GREEN}Extensions: PostGIS, hstore${NC}"
     
     echo -e "${GREEN}=== Phase 4 Complete: Database Ready ===${NC}"

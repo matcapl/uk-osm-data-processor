@@ -48,19 +48,19 @@ def main():
     print("\nSAMPLE QUERIES TO TRY:")
     print("-- Find all pubs in Manchester")
     print("SELECT name, ST_AsText(ST_Transform(way, 4326)) as location")
-    print("FROM osm_raw.planet_osm_point") 
+    print("FROM public.planet_osm_point") 
     print("WHERE amenity = 'pub'")
     print("  AND way && ST_Transform(ST_GeomFromText(")
     print("    'POLYGON((-2.3 53.4, -2.1 53.4, -2.1 53.5, -2.3 53.5, -2.3 53.4))', 4326), 3857);")
     
     print("\n-- Count buildings by type")
-    print("SELECT building, count(*) FROM osm_raw.planet_osm_polygon")
+    print("SELECT building, count(*) FROM public.planet_osm_polygon")
     print("WHERE building IS NOT NULL GROUP BY building ORDER BY count DESC LIMIT 20;")
     
     print("\nFor more complex queries, consider creating indexes:")
-    print("CREATE INDEX idx_point_amenity ON osm_raw.planet_osm_point(amenity);")
-    print("CREATE INDEX idx_polygon_building ON osm_raw.planet_osm_polygon(building);")
-    print("CREATE INDEX idx_point_geom ON osm_raw.planet_osm_point USING GIST(way);")
+    print("CREATE INDEX idx_point_amenity ON public.planet_osm_point(amenity);")
+    print("CREATE INDEX idx_polygon_building ON public.planet_osm_polygon(building);")
+    print("CREATE INDEX idx_point_geom ON public.planet_osm_point USING GIST(way);")
     
     print("="*70)
 
