@@ -1,0 +1,760 @@
+========================================
+DIAGNOSTIC 1: Check Source Tables
+========================================
+     table_name     | total_rows 
+--------------------+------------
+ planet_osm_polygon |       5237
+ planet_osm_roads   |      19748
+ planet_osm_point   |     285167
+ planet_osm_line    |     547691
+(4 rows)
+
+
+========================================
+DIAGNOSTIC 2: Sample Industrial Features
+========================================
+  osm_id   |             name             |  landuse   |  building  | industrial | office | amenity | craft 
+-----------+------------------------------+------------+------------+------------+--------+---------+-------
+ -11511597 | Tate & Lyle Sugar Refinery   | industrial |            |            |        |         | 
+ -18148041 | Arkay Windows                |            | industrial |            |        |         | 
+ -14716600 |                              |            | industrial |            |        |         | 
+ -12756293 | Stour Road Industrial Estate | industrial |            |            |        |         | 
+ -12756293 | Stour Road Industrial Estate | industrial |            |            |        |         | 
+ -12756293 | Stour Road Industrial Estate | industrial |            |            |        |         | 
+ -12756293 | Stour Road Industrial Estate | industrial |            |            |        |         | 
+ -12756293 | Stour Road Industrial Estate | industrial |            |            |        |         | 
+  -5836673 | Bow Triangle Business Centre | industrial |            |            |        |         | 
+  -5836673 | Bow Triangle Business Centre | industrial |            |            |        |         | 
+(10 rows)
+
+
+========================================
+DIAGNOSTIC 3: Check for Aerospace Keywords
+========================================
+        check_type         | count 
+---------------------------+-------
+ Has industrial landuse    |     8
+ Has industrial building   |     5
+ Direct aerospace in name  |     0
+ Has "engineering" in name |     0
+(4 rows)
+
+
+========================================
+DIAGNOSTIC 4: Check Filtered Views
+========================================
+               view_name               | status | row_count 
+---------------------------------------+--------+-----------
+ planet_osm_polygon_aerospace_filtered | EXISTS |      4264
+ planet_osm_point_aerospace_filtered   | EXISTS |    222333
+(2 rows)
+
+
+========================================
+DIAGNOSTIC 5: Check Scored Views
+========================================
+              view_name              |                                                                           view_definition_preview                                                                            
+-------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ planet_osm_line_aerospace_scored    |  SELECT osm_id,                                                                                                                                                             +
+                                     |     access,                                                                                                                                                                 +
+                                     |     "addr:city",                                                                                                                                                            +
+                                     |     "addr:country",                                                                                                                                                         +
+                                     |     "addr:housenumber",                                                                                                                                                     +
+                                     |     "addr:postcode",                                                                                                                                                        +
+                                     |     "addr:street",                                                                                                                                                          +
+                                     |     "addr:state",                                                                                                                                                           +
+                                     |     "addr:suburb",                                                                                                                                                          +
+                                     |     admin_level,                                                                                                                                                            +
+                                     |     aerialway,                                                                                                                                                              +
+                                     |     aeroway,                                                                                                                                                                +
+                                     |     amenity,                                                                                                                                                                +
+                                     |     area,                                                                                                                                                                   +
+                                     |     barrier,                                                                                                                                                                +
+                                     |     bicycle,                                                                                                                                                                +
+                                     |     boundary,                                                                                                                                                               +
+                                     |     brand,                                                                                                                                                                  +
+                                     |     bridge,                                                                                                                                                                 +
+                                     |     building,                                                                                                                                                               +
+                                     |     "building:levels",                                                                                                                                                      +
+                                     |     "building:use",                                                                                                                                                         +
+                                     |     bus,                                                                                                                                                                    +
+                                     |     construction,                                                                                                                                                           +
+                                     |     covered,                                                                                                                                                                +
+                                     |     cuisine,                                                                                                                                                                +
+                                     |     cutting,                                                                                                                                                                +
+                                     |     denomination,                                                                                                                                                           +
+                                     |     disused,                                                                                                                                                                +
+                                     |     embankment,                                                                                                                                                             +
+                                     |     foot,                                                                                                                                                                   +
+                                     |     "generator:source",                                                                                                                                                     +
+                                     |     harbour,                                                                                                                                                                +
+                                     |     highway,                                                                                                                                                                +
+                                     |     historic,                                                                                                                                                               +
+                                     |     horse,                                                                                                                                                                  +
+                                     |     industrial,                                                                                                                                                             +
+                                     |     junction,                                                                                                                                                               +
+                                     |     landuse,                                                                                                                                                                +
+                                     |     layer,                                                                                                                                                                  +
+                                     |     leisure,                                                                                                                                                                +
+                                     |     lock,                                                                                                                                                                   +
+                                     |     man_made,                                                                                                                                                               +
+                                     |     military,                                                                                                                                                               +
+                                     |     motorcar,                                                                                                                                                               +
+                                     |     name,                                                                                                                                                                   +
+                                     |     "name:en",                                                                                                                                                              +
+                                     |     "natural",                                                                                                                                                              +
+                                     |     office,                                                                                                                                                                 +
+                                     |     oneway,                                                                                                                                                                 +
+                                     |     operator,                                                                                                                                                               +
+                                     |     place,                                                                                                                                                                  +
+                                     |     population,                                                                                                                                                             +
+                                     |     power,                                                                                                                                                                  +
+                                     |     power_source,                                                                                                                                                           +
+                                     |     public_transport,                                                                                                                                                       +
+                                     |     railway,                                                                                                                                                                +
+                                     |     ref,                                                                                                                                                                    +
+                                     |     religion,                                                                                                                                                               +
+                                     |     route,                                                                                                                                                                  +
+                                     |     service,                                                                                                                                                                +
+                                     |     shop,                                                                                                                                                                   +
+                                     |     sport,                                                                                                                                                                  +
+                                     |     surface,                                                                                                                                                                +
+                                     |     toll,                                                                                                                                                                   +
+                                     |     tourism,                                                                                                                                                                +
+                                     |     tracktype,                                                                                                                                                              +
+                                     |     tunnel,                                                                                                                                                                 +
+                                     |     water,                                                                                                                                                                  +
+                                     |     waterway,                                                                                                                                                               +
+                                     |     website,                                                                                                                                                                +
+                                     |     wetland,                                                                                                                                                                +
+                                     |     wheelchair,                                                                                                                                                             +
+                                     |     width,                                                                                                                                                                  +
+                                     |     wood,                                                                                                                                                                   +
+                                     |     z_order,                                                                                                                                                                +
+                                     |     tags,                                                                                                                                                                   +
+                                     |     way,                                                                                                                                                                    +
+                                     |     (((((((((((((((((                                                                                                                                                       +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (aeroway = ANY (ARRAY['runway'::text, 'taxiway'::text, 'apron'::text])) THEN 100                                                                           +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END +                                                                                                                                                               +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (aeroway = 'aerodrome'::text) THEN 80                                                                                                                      +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE(name, ''::text)) ~ '(aerospace|aviation|aircraft|airfield)'::text) THEN 100                                                                +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE(operator, ''::text)) ~ '(aerospace|aviation|aircraft)'::text) THEN 100                                                                     +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE(name, ''::text)) ~ '(airbus|boeing|rolls.royce|bae.systems|leonardo)'::text) THEN 100                                                      +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE(name, ''::text)) ~ '(defense|defence|military|air.base)'::text) THEN 80                                                                    +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (military IS NOT NULL) THEN 80                                                                                                                             +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (landuse = 'military'::text) THEN 80                                                                                                                       +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE(name, ''::text)) ~ '(precision|technology|systems|engineering)'::text) THEN 70                                                             +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (industrial = ANY (ARRAY['engineering'::text, 'electronics'::text])) THEN 70                                                                               +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (landuse = 'industrial'::text) THEN 50                                                                                                                     +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (industrial IS NOT NULL) THEN 50                                                                                                                           +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (building = ANY (ARRAY['industrial'::text, 'warehouse'::text])) THEN 50                                                                                    +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (man_made = ANY (ARRAY['works'::text, 'factory'::text])) THEN 40                                                                                           +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (office = ANY (ARRAY['company'::text, 'engineering'::text, 'industrial'::text])) THEN 30                                                                   +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN ("addr:postcode" ~ '^(BA|BS|GL|DE|PR|YO|CB|RG|SL)'::text) THEN 20                                                                                          +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (website IS NOT NULL) THEN 10                                                                                                                              +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (tags ? 'phone'::text) THEN 5                                                                                                                              +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) AS aerospace_score                                                                                                                                             +
+                                     |    FROM planet_osm_line_aerospace_filtered                                                                                                                                  +
+                                     |   WHERE ((name IS NOT NULL) OR (aeroway IS NOT NULL) OR (industrial IS NOT NULL));
+ planet_osm_point_aerospace_scored   |  SELECT osm_id,                                                                                                                                                             +
+                                     |     "addr:city",                                                                                                                                                            +
+                                     |     "addr:country",                                                                                                                                                         +
+                                     |     "addr:housenumber",                                                                                                                                                     +
+                                     |     "addr:postcode",                                                                                                                                                        +
+                                     |     "addr:street",                                                                                                                                                          +
+                                     |     aerialway,                                                                                                                                                              +
+                                     |     aeroway,                                                                                                                                                                +
+                                     |     amenity,                                                                                                                                                                +
+                                     |     barrier,                                                                                                                                                                +
+                                     |     bicycle,                                                                                                                                                                +
+                                     |     brand,                                                                                                                                                                  +
+                                     |     bus,                                                                                                                                                                    +
+                                     |     construction,                                                                                                                                                           +
+                                     |     covered,                                                                                                                                                                +
+                                     |     cuisine,                                                                                                                                                                +
+                                     |     denomination,                                                                                                                                                           +
+                                     |     disused,                                                                                                                                                                +
+                                     |     ele,                                                                                                                                                                    +
+                                     |     emergency,                                                                                                                                                              +
+                                     |     entrance,                                                                                                                                                               +
+                                     |     foot,                                                                                                                                                                   +
+                                     |     "generator:source",                                                                                                                                                     +
+                                     |     harbour,                                                                                                                                                                +
+                                     |     highway,                                                                                                                                                                +
+                                     |     historic,                                                                                                                                                               +
+                                     |     horse,                                                                                                                                                                  +
+                                     |     information,                                                                                                                                                            +
+                                     |     junction,                                                                                                                                                               +
+                                     |     landuse,                                                                                                                                                                +
+                                     |     leisure,                                                                                                                                                                +
+                                     |     man_made,                                                                                                                                                               +
+                                     |     military,                                                                                                                                                               +
+                                     |     name,                                                                                                                                                                   +
+                                     |     "name:en",                                                                                                                                                              +
+                                     |     "natural",                                                                                                                                                              +
+                                     |     office,                                                                                                                                                                 +
+                                     |     operator,                                                                                                                                                               +
+                                     |     place,                                                                                                                                                                  +
+                                     |     population,                                                                                                                                                             +
+                                     |     power,                                                                                                                                                                  +
+                                     |     public_transport,                                                                                                                                                       +
+                                     |     railway,                                                                                                                                                                +
+                                     |     ref,                                                                                                                                                                    +
+                                     |     religion,                                                                                                                                                               +
+                                     |     shop,                                                                                                                                                                   +
+                                     |     sport,                                                                                                                                                                  +
+                                     |     surface,                                                                                                                                                                +
+                                     |     tourism,                                                                                                                                                                +
+                                     |     waterway,                                                                                                                                                               +
+                                     |     website,                                                                                                                                                                +
+                                     |     wheelchair,                                                                                                                                                             +
+                                     |     tags,                                                                                                                                                                   +
+                                     |     way,                                                                                                                                                                    +
+                                     |     ((((((((((((((((((                                                                                                                                                      +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE(name, ''::text)) ~ '(aerospace|aviation|aircraft|avionics)'::text) THEN 100                                                                +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END +                                                                                                                                                               +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE(operator, ''::text)) ~ '(aerospace|aviation|aircraft)'::text) THEN 100                                                                     +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE(name, ''::text)) ~ '(airbus|boeing|rolls.royce|bae.systems|leonardo|thales|safran|gkn|meggitt|cobham|moog|parker.hannifin)'::text) THEN 100+
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE(name, ''::text)) ~ '(defense|defence|military|radar|missile|weapons)'::text) THEN 80                                                       +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (military IS NOT NULL) THEN 80                                                                                                                             +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE(name, ''::text)) ~ '(precision|advanced|technology|systems|electronics|engineering)'::text) THEN 70                                        +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (office = ANY (ARRAY['engineering'::text, 'research'::text, 'technology'::text, 'it'::text])) THEN 70                                                      +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE(name, ''::text)) ~ '(research|development|laboratory|r&d|institute|university)'::text) THEN 60                                             +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (amenity = ANY (ARRAY['research_institute'::text, 'university'::text, 'college'::text])) THEN 60                                                           +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE(name, ''::text)) ~ '(machining|casting|forging|composite|materials|fabrication)'::text) THEN 50                                            +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (man_made = ANY (ARRAY['works'::text, 'factory'::text, 'crane'::text])) THEN 50                                                                            +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (landuse = 'industrial'::text) THEN 40                                                                                                                     +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (man_made IS NOT NULL) THEN 30                                                                                                                             +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE(name, ''::text)) ~ '(engineering|technical)'::text) THEN 30                                                                                +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (office = ANY (ARRAY['company'::text, 'industrial'::text])) THEN 30                                                                                        +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN ("addr:postcode" ~ '^(BA|BS|GL|DE|PR|YO|CB|RG|SL|BH|SO)'::text) THEN 20                                                                                    +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (website IS NOT NULL) THEN 10                                                                                                                              +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (tags ? 'phone'::text) THEN 10                                                                                                                             +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (tags ? 'email'::text) THEN 5                                                                                                                              +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) AS aerospace_score                                                                                                                                             +
+                                     |    FROM planet_osm_point_aerospace_filtered                                                                                                                                 +
+                                     |   WHERE ((name IS NOT NULL) OR (operator IS NOT NULL));
+ planet_osm_polygon_aerospace_scored |  SELECT osm_id,                                                                                                                                                             +
+                                     |     access,                                                                                                                                                                 +
+                                     |     "addr:city",                                                                                                                                                            +
+                                     |     "addr:country",                                                                                                                                                         +
+                                     |     "addr:housenumber",                                                                                                                                                     +
+                                     |     "addr:postcode",                                                                                                                                                        +
+                                     |     "addr:street",                                                                                                                                                          +
+                                     |     "addr:state",                                                                                                                                                           +
+                                     |     "addr:suburb",                                                                                                                                                          +
+                                     |     admin_level,                                                                                                                                                            +
+                                     |     aerialway,                                                                                                                                                              +
+                                     |     aeroway,                                                                                                                                                                +
+                                     |     amenity,                                                                                                                                                                +
+                                     |     area,                                                                                                                                                                   +
+                                     |     barrier,                                                                                                                                                                +
+                                     |     bicycle,                                                                                                                                                                +
+                                     |     boundary,                                                                                                                                                               +
+                                     |     brand,                                                                                                                                                                  +
+                                     |     bridge,                                                                                                                                                                 +
+                                     |     building,                                                                                                                                                               +
+                                     |     "building:levels",                                                                                                                                                      +
+                                     |     "building:use",                                                                                                                                                         +
+                                     |     bus,                                                                                                                                                                    +
+                                     |     construction,                                                                                                                                                           +
+                                     |     covered,                                                                                                                                                                +
+                                     |     cuisine,                                                                                                                                                                +
+                                     |     cutting,                                                                                                                                                                +
+                                     |     denomination,                                                                                                                                                           +
+                                     |     disused,                                                                                                                                                                +
+                                     |     embankment,                                                                                                                                                             +
+                                     |     foot,                                                                                                                                                                   +
+                                     |     "generator:source",                                                                                                                                                     +
+                                     |     harbour,                                                                                                                                                                +
+                                     |     highway,                                                                                                                                                                +
+                                     |     historic,                                                                                                                                                               +
+                                     |     horse,                                                                                                                                                                  +
+                                     |     industrial,                                                                                                                                                             +
+                                     |     junction,                                                                                                                                                               +
+                                     |     landuse,                                                                                                                                                                +
+                                     |     layer,                                                                                                                                                                  +
+                                     |     leisure,                                                                                                                                                                +
+                                     |     lock,                                                                                                                                                                   +
+                                     |     man_made,                                                                                                                                                               +
+                                     |     military,                                                                                                                                                               +
+                                     |     motorcar,                                                                                                                                                               +
+                                     |     name,                                                                                                                                                                   +
+                                     |     "name:en",                                                                                                                                                              +
+                                     |     "natural",                                                                                                                                                              +
+                                     |     office,                                                                                                                                                                 +
+                                     |     oneway,                                                                                                                                                                 +
+                                     |     operator,                                                                                                                                                               +
+                                     |     place,                                                                                                                                                                  +
+                                     |     population,                                                                                                                                                             +
+                                     |     power,                                                                                                                                                                  +
+                                     |     power_source,                                                                                                                                                           +
+                                     |     public_transport,                                                                                                                                                       +
+                                     |     railway,                                                                                                                                                                +
+                                     |     ref,                                                                                                                                                                    +
+                                     |     religion,                                                                                                                                                               +
+                                     |     route,                                                                                                                                                                  +
+                                     |     service,                                                                                                                                                                +
+                                     |     shop,                                                                                                                                                                   +
+                                     |     sport,                                                                                                                                                                  +
+                                     |     surface,                                                                                                                                                                +
+                                     |     toll,                                                                                                                                                                   +
+                                     |     tourism,                                                                                                                                                                +
+                                     |     tracktype,                                                                                                                                                              +
+                                     |     tunnel,                                                                                                                                                                 +
+                                     |     water,                                                                                                                                                                  +
+                                     |     waterway,                                                                                                                                                               +
+                                     |     website,                                                                                                                                                                +
+                                     |     wetland,                                                                                                                                                                +
+                                     |     wheelchair,                                                                                                                                                             +
+                                     |     width,                                                                                                                                                                  +
+                                     |     wood,                                                                                                                                                                   +
+                                     |     z_order,                                                                                                                                                                +
+                                     |     tags,                                                                                                                                                                   +
+                                     |     way,                                                                                                                                                                    +
+                                     |     (((((((((((((((((((((((                                                                                                                                                 +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE(name, ''::text)) ~ '(aerospace|aviation|aircraft|avionics)'::text) THEN 100                                                                +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END +                                                                                                                                                               +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE(operator, ''::text)) ~ '(aerospace|aviation|aircraft)'::text) THEN 100                                                                     +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE((tags)::text, ''::text)) ~ 'aerospace|aviation|aircraft'::text) THEN 100                                                                   +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE(name, ''::text)) ~ '(airbus|boeing|rolls.royce|bae.systems|leonardo|thales|safran|gkn|meggitt|cobham)'::text) THEN 100                     +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE(name, ''::text)) ~ '(defense|defence|military|radar|missile|weapons|ballistic)'::text) THEN 80                                             +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (military IS NOT NULL) THEN 80                                                                                                                             +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (landuse = 'military'::text) THEN 80                                                                                                                       +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE(name, ''::text)) ~ '(precision|advanced|technology|systems|electronics|engineering)'::text) THEN 70                                        +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (industrial = ANY (ARRAY['engineering'::text, 'electronics'::text, 'precision'::text, 'high_tech'::text])) THEN 70                                         +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (office = ANY (ARRAY['engineering'::text, 'research'::text, 'technology'::text])) THEN 70                                                                  +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE(name, ''::text)) ~ '(research|development|laboratory|r&d|institute)'::text) THEN 60                                                        +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (office = 'research'::text) THEN 60                                                                                                                        +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (amenity = ANY (ARRAY['research_institute'::text, 'university'::text])) THEN 60                                                                            +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE(name, ''::text)) ~ '(machining|casting|forging|composite|materials|fabrication|tooling)'::text) THEN 50                                    +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (man_made = ANY (ARRAY['works'::text, 'factory'::text])) THEN 50                                                                                           +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (landuse = 'industrial'::text) THEN 40                                                                                                                     +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (building = ANY (ARRAY['industrial'::text, 'warehouse'::text, 'manufacture'::text, 'factory'::text])) THEN 40                                              +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (industrial IS NOT NULL) THEN 40                                                                                                                           +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE(name, ''::text)) ~ '(engineering|technical|specialist)'::text) THEN 30                                                                     +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (office = ANY (ARRAY['company'::text, 'industrial'::text])) THEN 30                                                                                        +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN ("addr:postcode" ~ '^(BA|BS|GL|DE|PR|YO|CB|RG|SL|BH|SO)'::text) THEN 20                                                                                    +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (website IS NOT NULL) THEN 10                                                                                                                              +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN ((tags ? 'phone'::text) OR (tags ? 'contact:phone'::text)) THEN 10                                                                                         +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN ((tags ? 'email'::text) OR (tags ? 'contact:email'::text)) THEN 5                                                                                          +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) AS aerospace_score                                                                                                                                             +
+                                     |    FROM planet_osm_polygon_aerospace_filtered                                                                                                                               +
+                                     |   WHERE (((name IS NOT NULL) OR (operator IS NOT NULL) OR ("addr:postcode" IS NOT NULL)) AND (st_area(way) > (50)::double precision));
+ planet_osm_roads_aerospace_scored   |  SELECT osm_id,                                                                                                                                                             +
+                                     |     access,                                                                                                                                                                 +
+                                     |     "addr:city",                                                                                                                                                            +
+                                     |     "addr:country",                                                                                                                                                         +
+                                     |     "addr:housenumber",                                                                                                                                                     +
+                                     |     "addr:postcode",                                                                                                                                                        +
+                                     |     "addr:street",                                                                                                                                                          +
+                                     |     "addr:state",                                                                                                                                                           +
+                                     |     "addr:suburb",                                                                                                                                                          +
+                                     |     admin_level,                                                                                                                                                            +
+                                     |     aerialway,                                                                                                                                                              +
+                                     |     aeroway,                                                                                                                                                                +
+                                     |     amenity,                                                                                                                                                                +
+                                     |     area,                                                                                                                                                                   +
+                                     |     barrier,                                                                                                                                                                +
+                                     |     bicycle,                                                                                                                                                                +
+                                     |     boundary,                                                                                                                                                               +
+                                     |     brand,                                                                                                                                                                  +
+                                     |     bridge,                                                                                                                                                                 +
+                                     |     building,                                                                                                                                                               +
+                                     |     "building:levels",                                                                                                                                                      +
+                                     |     "building:use",                                                                                                                                                         +
+                                     |     bus,                                                                                                                                                                    +
+                                     |     construction,                                                                                                                                                           +
+                                     |     covered,                                                                                                                                                                +
+                                     |     cuisine,                                                                                                                                                                +
+                                     |     cutting,                                                                                                                                                                +
+                                     |     denomination,                                                                                                                                                           +
+                                     |     disused,                                                                                                                                                                +
+                                     |     embankment,                                                                                                                                                             +
+                                     |     foot,                                                                                                                                                                   +
+                                     |     "generator:source",                                                                                                                                                     +
+                                     |     harbour,                                                                                                                                                                +
+                                     |     highway,                                                                                                                                                                +
+                                     |     historic,                                                                                                                                                               +
+                                     |     horse,                                                                                                                                                                  +
+                                     |     industrial,                                                                                                                                                             +
+                                     |     junction,                                                                                                                                                               +
+                                     |     landuse,                                                                                                                                                                +
+                                     |     layer,                                                                                                                                                                  +
+                                     |     leisure,                                                                                                                                                                +
+                                     |     lock,                                                                                                                                                                   +
+                                     |     man_made,                                                                                                                                                               +
+                                     |     military,                                                                                                                                                               +
+                                     |     motorcar,                                                                                                                                                               +
+                                     |     name,                                                                                                                                                                   +
+                                     |     "name:en",                                                                                                                                                              +
+                                     |     "natural",                                                                                                                                                              +
+                                     |     office,                                                                                                                                                                 +
+                                     |     oneway,                                                                                                                                                                 +
+                                     |     operator,                                                                                                                                                               +
+                                     |     place,                                                                                                                                                                  +
+                                     |     population,                                                                                                                                                             +
+                                     |     power,                                                                                                                                                                  +
+                                     |     power_source,                                                                                                                                                           +
+                                     |     public_transport,                                                                                                                                                       +
+                                     |     railway,                                                                                                                                                                +
+                                     |     ref,                                                                                                                                                                    +
+                                     |     religion,                                                                                                                                                               +
+                                     |     route,                                                                                                                                                                  +
+                                     |     service,                                                                                                                                                                +
+                                     |     shop,                                                                                                                                                                   +
+                                     |     sport,                                                                                                                                                                  +
+                                     |     surface,                                                                                                                                                                +
+                                     |     toll,                                                                                                                                                                   +
+                                     |     tourism,                                                                                                                                                                +
+                                     |     tracktype,                                                                                                                                                              +
+                                     |     tunnel,                                                                                                                                                                 +
+                                     |     water,                                                                                                                                                                  +
+                                     |     waterway,                                                                                                                                                               +
+                                     |     website,                                                                                                                                                                +
+                                     |     wetland,                                                                                                                                                                +
+                                     |     wheelchair,                                                                                                                                                             +
+                                     |     width,                                                                                                                                                                  +
+                                     |     wood,                                                                                                                                                                   +
+                                     |     z_order,                                                                                                                                                                +
+                                     |     tags,                                                                                                                                                                   +
+                                     |     way,                                                                                                                                                                    +
+                                     |     ((((((((((((((                                                                                                                                                          +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (aeroway IS NOT NULL) THEN 120                                                                                                                             +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END +                                                                                                                                                               +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE(name, ''::text)) ~ '(aerospace|aviation|aircraft)'::text) THEN 100                                                                         +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE(operator, ''::text)) ~ '(aerospace|aviation)'::text) THEN 100                                                                              +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE(name, ''::text)) ~ '(airbus|boeing|rolls.royce|bae.systems|leonardo|thales|safran)'::text) THEN 100                                        +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE(name, ''::text)) ~ '(industrial.estate|business.park|technology.park|science.park)'::text) THEN 60                                         +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (landuse = 'industrial'::text) THEN 60                                                                                                                     +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE(name, ''::text)) ~ '(defense|defence|military|air.base|raf)'::text) THEN 80                                                                +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (military IS NOT NULL) THEN 80                                                                                                                             +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE(name, ''::text)) ~ '(engineering|technology|precision|advanced)'::text) THEN 50                                                            +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (industrial IS NOT NULL) THEN 50                                                                                                                           +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (lower(COALESCE(name, ''::text)) ~ '(manufacturing|factory|works)'::text) THEN 40                                                                          +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (man_made = ANY (ARRAY['works'::text, 'factory'::text])) THEN 40                                                                                           +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN ("addr:postcode" ~ '^(BA|BS|GL|DE|PR|YO|CB|RG|SL|BH|SO)'::text) THEN 20                                                                                    +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (website IS NOT NULL) THEN 10                                                                                                                              +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) +                                                                                                                                                              +
+                                     |         CASE                                                                                                                                                                +
+                                     |             WHEN (tags ? 'phone'::text) THEN 5                                                                                                                              +
+                                     |             ELSE 0                                                                                                                                                          +
+                                     |         END) AS aerospace_score                                                                                                                                             +
+                                     |    FROM planet_osm_roads_aerospace_filtered                                                                                                                                 +
+                                     |   WHERE ((name IS NOT NULL) OR (aeroway IS NOT NULL) OR (landuse = 'industrial'::text) OR (industrial IS NOT NULL));
+(4 rows)
+
+
+========================================
+DIAGNOSTIC 6: Manual Score Calculation
+========================================
+  osm_id   |             name             |  landuse   |  building  | industrial | manual_score 
+-----------+------------------------------+------------+------------+------------+--------------
+ -11511597 | Tate & Lyle Sugar Refinery   | industrial |            |            |           40
+ -18148041 | Arkay Windows                |            | industrial |            |           40
+ -12756293 | Stour Road Industrial Estate | industrial |            |            |           40
+ -12756293 | Stour Road Industrial Estate | industrial |            |            |           40
+ -12756293 | Stour Road Industrial Estate | industrial |            |            |           40
+ -12756293 | Stour Road Industrial Estate | industrial |            |            |           40
+ -12756293 | Stour Road Industrial Estate | industrial |            |            |           40
+  -5836673 | Bow Triangle Business Centre | industrial |            |            |           40
+  -5836673 | Bow Triangle Business Centre | industrial |            |            |           40
+ -16189645 | Jubilee Line Vent Shaft      |            | industrial |            |           40
+(10 rows)
+
+
+========================================
+DIAGNOSTIC 7: Check Scored View Contents
+========================================
+ total_in_scored_view | above_threshold | tier2_or_better | tier1 | min_score | max_score | avg_score 
+----------------------+-----------------+-----------------+-------+-----------+-----------+-----------
+                 1390 |              93 |               7 |     0 |         0 |       125 |         6
+(1 row)
+
+
+========================================
+DIAGNOSTIC 8: Sample High Scorers
+========================================
+  osm_id   |                   name                    | aerospace_score | landuse  | building | industrial |   office   
+-----------+-------------------------------------------+-----------------+----------+----------+------------+------------
+ -11192041 | Leonardo Royal Hotel London St Paul's     |             125 |          | yes      |            | 
+  -2472821 | Inns of Court and City and Essex Yeomanry |              90 | military | yes      |            | government
+ -14875126 | King's College London, Guy's Campus       |              80 |          |          |            | 
+ 310159570 | Queen Mary School of Law                  |              80 |          |          |            | 
+  -7608159 | City St George’s, University of London    |              80 |          |          |            | 
+  -7608159 | City St George’s, University of London    |              80 |          |          |            | 
+  -7608159 | City St George’s, University of London    |              80 |          |          |            | 
+ -11373735 | University College London                 |              70 |          |          |            | 
+ -11373735 | University College London                 |              70 |          |          |            | 
+ -11373735 | University College London                 |              70 |          |          |            | 
+(10 rows)
+
+
+========================================
+DIAGNOSTIC 9: Check Why Features Fail Threshold
+========================================
+ total_scored | below_threshold | zero_score | no_name | no_name_but_high_score 
+--------------+-----------------+------------+---------+------------------------
+         1390 |            1297 |       1179 |      66 |                      0
+(1 row)
+
+
+========================================
+DIAGNOSTIC 10: Check Staging Tables
+========================================
+              table_name               | row_count 
+---------------------------------------+-----------
+ aerospace_candidates_polygon          |        93
+ aerospace_candidates_point            |       449
+ aerospace_supplier_candidates (FINAL) |         0
+(3 rows)
+
+
+========================================
+DIAGNOSTIC 11: Check Tags Structure
+========================================
+    check_type    |    value     
+------------------+--------------
+ Tags column type | USER-DEFINED
+(1 row)
+
+
+========================================
+DIAGNOSTIC 12: Test Regex Patterns
+========================================
+          test           | matches 
+-------------------------+---------
+ Regex test: aerospace   |       0
+ LIKE test: engineering  |       0
+ Regex test: precision   |       0
+ Regex test: engineering |       0
+(4 rows)
+
+
+========================================
+DIAGNOSTIC COMPLETE
+========================================
+
+Next steps based on results:
+  - If source tables empty: Data import issue
+  - If filtered views empty: Exclusion filters too aggressive
+  - If scored views have data but staging empty: INSERT issue
+  - If scores all below 40: Scoring rules need adjustment
+
