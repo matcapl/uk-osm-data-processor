@@ -1,0 +1,357 @@
+# Enhanced Aerospace Scoring Configuration v2.0
+# Drop-in replacement for scoring.yaml
+
+# ==============================================================================
+# TIER 1: DEFINITIVE EVIDENCE (150-250 points)
+# ==============================================================================
+
+tier1_companies:
+  prime_contractors:  # +200 points - definitive
+    weight: 200
+    patterns:
+      - '^airbus'
+      - 'boeing'
+      - 'rolls.royce|rolls\s+royce'
+      - 'bae\s+systems|bae$'
+      - 'leonardo(\s|$)'
+      - 'thales(\s|$)'
+      - 'safran(\s|$)'
+      - 'raytheon'
+      - 'lockheed\s+martin'
+      - 'northrop\s+grumman'
+      - 'general\s+electric\s+aviation|ge\s+aviation'
+      - 'pratt.whitney|pratt\s+&\s+whitney'
+      - 'honeywell\s+aerospace'
+      - 'collins\s+aerospace'
+      - 'spirit\s+aerosystems'
+  
+  known_tier2:  # +150 points - very high confidence
+    weight: 150
+    patterns:
+      - 'gkn\s+aerospace|gkn$'
+      - 'meggitt'
+      - 'cobham'
+      - 'senior\s+aerospace'
+      - 'gardner\s+aerospace'
+      - 'magellan\s+aerospace'
+      - 'triumph\s+(group|aerospace)'
+      - 'moog\s+aircraft|moog\s+aerospace'
+      - 'parker\s+hannifin|parker\s+aerospace'
+      - 'woodward\s+aerospace'
+      - 'eaton\s+aerospace'
+      - 'bombardier'
+      - 'liebherr.aerospace'
+      - 'precision\s+castparts|pcc'
+      - 'aar\s+corp'
+
+# ==============================================================================
+# TIER 2: STRONG AEROSPACE INDICATORS (80-120 points)
+# ==============================================================================
+
+direct_aerospace:
+  exact_terms:  # +100 points
+    weight: 100
+    patterns:
+      - '\maerospace\M'
+      - '\maviation\M'
+      - '\maircraft\M'
+      - '\mavionics\M'
+      - '\maeronautical\M'
+      - '\mairframe\M'
+
+  aerospace_products:  # +90 points
+    weight: 90
+    patterns:
+      - 'aircraft\s+(engine|turbine|component)'
+      - 'jet\s+engine'
+      - 'landing\s+gear'
+      - 'flight\s+control'
+      - 'nacelle'
+      - 'rotor\s+blade'
+
+# ==============================================================================
+# TIER 3: MANUFACTURING CAPABILITIES (60-80 points)
+# ==============================================================================
+
+precision_manufacturing:
+  high_value:  # +80 points
+    weight: 80
+    patterns:
+      - 'precision\s+engineer'
+      - 'precision\s+machin'
+      - 'cnc\s+machin'
+      - 'advanced\s+manufactur'
+      - '5.axis\s+machin'
+      - 'multi.axis\s+machin'
+  
+  aerospace_processes:  # +70 points
+    weight: 70
+    patterns:
+      - 'composite\s+manufactur'
+      - 'composite\s+material'
+      - 'titanium\s+machin'
+      - 'metal\s+finishing'
+      - 'surface\s+treatment'
+      - 'heat\s+treatment'
+      - 'electroplating'
+      - 'anodising|anodizing'
+      - 'shot\s+peening'
+      - 'non.destructive\s+test|ndt'
+  
+  general_capabilities:  # +60 points
+    weight: 60
+    patterns:
+      - 'precision\s+casting'
+      - 'investment\s+casting'
+      - 'forging'
+      - 'stamping'
+      - 'sheet\s+metal'
+      - 'fabrication'
+      - 'welding\s+special'
+      - 'tooling'
+      - 'jig.+fixture'
+
+# ==============================================================================
+# TIER 4: AEROSPACE SPECIALIZATIONS (50-70 points)
+# ==============================================================================
+
+technical_specializations:
+  systems:  # +70 points
+    weight: 70
+    patterns:
+      - 'hydraulic\s+system'
+      - 'pneumatic\s+system'
+      - 'fuel\s+system'
+      - 'control\s+system'
+      - 'avionics\s+system'
+  
+  components:  # +65 points
+    weight: 65
+    patterns:
+      - 'actuator'
+      - 'valve'
+      - 'bearing'
+      - 'fastener'
+      - 'seal'
+      - 'gasket'
+      - 'coupling'
+  
+  materials:  # +60 points
+    weight: 60
+    patterns:
+      - 'composite'
+      - 'carbon\s+fibre|carbon\s+fiber'
+      - 'titanium'
+      - 'aluminium\s+alloy|aluminum\s+alloy'
+      - 'super\s+alloy|superalloy'
+      - 'nickel\s+alloy'
+
+# ==============================================================================
+# TIER 5: DEFENSE & MILITARY (70-90 points)
+# ==============================================================================
+
+defense_indicators:
+  explicit:  # +90 points
+    weight: 90
+    patterns:
+      - '\mdefence\M|\mdefense\M'
+      - '\mmilitary\M'
+      - '\mmod\M|ministry\s+of\s+defence'
+      - 'defence\s+equipment'
+      - 'military\s+aircraft'
+      - 'naval\s+aviation'
+  
+  facilities:  # +80 points
+    weight: 80
+    patterns:
+      - '\mraf\M|royal\s+air\s+force'
+      - 'air\s+base'
+      - 'military\s+airport'
+      - 'defence\s+site'
+      - 'mod\s+establishment'
+  
+  products:  # +70 points
+    weight: 70
+    patterns:
+      - 'radar\s+system'
+      - 'missile'
+      - 'munition'
+      - 'ordinance'
+      - 'weapon\s+system'
+
+# ==============================================================================
+# TIER 6: QUALITY & CERTIFICATION (40-70 points)
+# ==============================================================================
+
+quality_standards:
+  aerospace_specific:  # +70 points (VERY high signal)
+    weight: 70
+    patterns:
+      - 'as9100'
+      - 'as9110'
+      - 'as9120'
+      - 'nadcap'
+      - 'easa\s+part\s+21|easa.part.21'
+      - 'easa\s+part\s+145|easa.part.145'
+      - 'faa\s+certified|faa.part'
+      - 'jisq\s+9100'
+      - 'en\s+9100'
+  
+  general_quality:  # +40 points
+    weight: 40
+    patterns:
+      - 'iso\s+9001'
+      - 'quality\s+assurance'
+      - 'quality\s+management'
+
+# ==============================================================================
+# TIER 7: INDUSTRIAL CLASSIFICATION (30-50 points)
+# ==============================================================================
+
+industrial_indicators:
+  strong:  # +50 points
+    weight: 50
+    conditions:
+      industrial: ['engineering', 'electronics', 'precision', 'high_tech', 'manufacturing']
+      landuse: ['industrial']
+      building: ['industrial', 'factory', 'warehouse', 'manufacture']
+  
+  moderate:  # +40 points
+    weight: 40
+    conditions:
+      office: ['engineering', 'research', 'technology', 'industrial']
+      man_made: ['works', 'factory', 'crane']
+  
+  basic:  # +30 points
+    weight: 30
+    conditions:
+      building: ['commercial', 'retail'] # WITH aerospace keywords
+      office: ['company']
+
+# ==============================================================================
+# TIER 8: GEOGRAPHIC INTELLIGENCE (20-50 points)
+# ==============================================================================
+
+geographic_clusters:
+  primary_aerospace_hubs:  # +50 points
+    weight: 50
+    postcodes: ['BS', 'GL', 'DE', 'PR', 'BA', 'GU14', 'GU15']  # Bristol, Derby, Preston, Yeovil, Farnborough
+    
+  secondary_hubs:  # +30 points
+    weight: 30
+    postcodes: ['CB', 'SO', 'BT', 'LE', 'NG', 'RG', 'OX']  # Cambridge, Southampton, Belfast, Leicester
+  
+  emerging_clusters:  # +20 points
+    weight: 20
+    postcodes: ['CF', 'SN', 'PE', 'YO', 'HD', 'S', 'NE']  # Cardiff, Swindon, Peterborough, York, Huddersfield, Sheffield, Newcastle
+
+# ==============================================================================
+# TIER 9: BUSINESS LEGITIMACY (10-30 points)
+# ==============================================================================
+
+legitimacy_signals:
+  strong:  # +30 points
+    weight: 30
+    conditions:
+      - website_contains: ['aerospace', 'aviation', 'precision', 'engineering']
+  
+  moderate:  # +15 points
+    weight: 15
+    conditions:
+      - has_website: true
+      - has_phone: true
+      - has_postcode: true
+  
+  basic:  # +10 points
+    weight: 10
+    conditions:
+      - has_website: true
+
+# ==============================================================================
+# TIER 10: BUILDING CHARACTERISTICS (10-25 points)
+# ==============================================================================
+
+building_characteristics:
+  large_industrial:  # +25 points
+    weight: 25
+    conditions:
+      - building_area: '>5000'  # sqm
+      - building_type: ['industrial', 'warehouse', 'factory']
+  
+  medium_industrial:  # +15 points
+    weight: 15
+    conditions:
+      - building_area: '>1000'
+      - building_type: ['industrial', 'warehouse']
+  
+  industrial_landuse:  # +10 points
+    weight: 10
+    conditions:
+      - landuse: 'industrial'
+
+# ==============================================================================
+# NEGATIVE SIGNALS (EXCLUSIONS)
+# ==============================================================================
+
+strong_negatives:
+  consumer_businesses:  # -200 points (disqualifying)
+    weight: -200
+    conditions:
+      - shop: '*'  # Any shop
+      - tourism: '*'  # Any tourism
+      - amenity: ['restaurant', 'pub', 'cafe', 'bar', 'fast_food', 'hotel']
+      - leisure: ['*']
+    override_if:  # UNLESS explicit aerospace
+      - name_contains: ['aerospace', 'aviation', 'aircraft']
+  
+  residential:  # -150 points
+    weight: -150
+    conditions:
+      - building: ['house', 'apartments', 'residential']
+      - landuse: ['residential']
+    override_if:
+      - name_contains: ['aerospace', 'aviation']
+  
+  clearly_wrong:  # -100 points
+    weight: -100
+    keywords:
+      - 'retail'
+      - 'supermarket'
+      - 'grocery'
+      - 'convenience'
+      - 'salon'
+      - 'barber'
+      - 'gym'
+      - 'fitness'
+      - 'spa'
+
+moderate_negatives:
+  service_sector:  # -50 points
+    weight: -50
+    conditions:
+      - office: ['estate_agent', 'insurance', 'accountant', 'lawyer', 'financial']
+      - amenity: ['bank', 'post_office']
+
+# ==============================================================================
+# SCORING THRESHOLDS
+# ==============================================================================
+
+thresholds:
+  tier1_candidate: 150      # Very high confidence
+  tier2_candidate: 80       # High confidence
+  potential_candidate: 40   # Worth investigating
+  minimum_score: 40         # Below this = discard
+
+# ==============================================================================
+# VALIDATION RULES
+# ==============================================================================
+
+validation:
+  required_fields:
+    - name_or_operator: true  # Must have identifying name
+    - not_residential: true   # Can't be residential
+  
+  suspicion_triggers:  # Flag for manual review
+    - score_above_150_no_website: true
+    - tier1_but_residential_postcode: true
+    - high_score_but_consumer_amenity: true
