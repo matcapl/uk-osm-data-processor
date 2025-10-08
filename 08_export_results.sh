@@ -31,9 +31,7 @@ echo ""
 # ============================================================================
 echo -e "${YELLOW}[1/5]${NC} Exporting all candidates..."
 
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<SQL
-\copy (
-  SELECT 
+ALL_QUERY="SELECT 
     osm_id,
     source_table,
     name,
@@ -57,9 +55,9 @@ psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<SQL
     longitude,
     created_at
   FROM aerospace_supplier_candidates
-  ORDER BY aerospace_score DESC
-) TO '${OUTPUT_DIR}/all_candidates_${TIMESTAMP}.csv' WITH CSV HEADER;
-SQL
+  ORDER BY aerospace_score DESC"
+
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "\copy ($ALL_QUERY) TO '${OUTPUT_DIR}/all_candidates_${TIMESTAMP}.csv' WITH CSV HEADER;"
 
 echo -e "${GREEN}✓${NC} Exported: all_candidates_${TIMESTAMP}.csv"
 
@@ -68,9 +66,7 @@ echo -e "${GREEN}✓${NC} Exported: all_candidates_${TIMESTAMP}.csv"
 # ============================================================================
 echo -e "${YELLOW}[2/5]${NC} Exporting Tier 1 candidates (≥150)..."
 
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<SQL
-\copy (
-  SELECT 
+TIER1_QUERY="SELECT 
     name,
     aerospace_score,
     confidence_level,
@@ -85,9 +81,9 @@ psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<SQL
     industrial_type
   FROM aerospace_supplier_candidates
   WHERE tier_classification = 'tier1_candidate'
-  ORDER BY aerospace_score DESC
-) TO '${OUTPUT_DIR}/tier1_candidates_${TIMESTAMP}.csv' WITH CSV HEADER;
-SQL
+  ORDER BY aerospace_score DESC"
+
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "\copy ($TIER1_QUERY) TO '${OUTPUT_DIR}/tier1_candidates_${TIMESTAMP}.csv' WITH CSV HEADER;"
 
 echo -e "${GREEN}✓${NC} Exported: tier1_candidates_${TIMESTAMP}.csv"
 
@@ -96,9 +92,7 @@ echo -e "${GREEN}✓${NC} Exported: tier1_candidates_${TIMESTAMP}.csv"
 # ============================================================================
 echo -e "${YELLOW}[3/5]${NC} Exporting Tier 2 candidates (80-149)..."
 
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<SQL
-\copy (
-  SELECT 
+TIER2_QUERY="SELECT 
     name,
     aerospace_score,
     confidence_level,
@@ -113,9 +107,9 @@ psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<SQL
     industrial_type
   FROM aerospace_supplier_candidates
   WHERE tier_classification = 'tier2_candidate'
-  ORDER BY aerospace_score DESC
-) TO '${OUTPUT_DIR}/tier2_candidates_${TIMESTAMP}.csv' WITH CSV HEADER;
-SQL
+  ORDER BY aerospace_score DESC"
+
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "\copy ($TIER2_QUERY) TO '${OUTPUT_DIR}/tier2_candidates_${TIMESTAMP}.csv' WITH CSV HEADER;"
 
 echo -e "${GREEN}✓${NC} Exported: tier2_candidates_${TIMESTAMP}.csv"
 
@@ -124,9 +118,7 @@ echo -e "${GREEN}✓${NC} Exported: tier2_candidates_${TIMESTAMP}.csv"
 # ============================================================================
 echo -e "${YELLOW}[4/5]${NC} Exporting candidates with contact info..."
 
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<SQL
-\copy (
-  SELECT 
+CONTACT_QUERY="SELECT 
     name,
     aerospace_score,
     tier_classification,
@@ -138,9 +130,9 @@ psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<SQL
     array_to_string(matched_keywords, '; ') as keywords
   FROM aerospace_supplier_candidates
   WHERE website IS NOT NULL OR phone IS NOT NULL OR email IS NOT NULL
-  ORDER BY aerospace_score DESC
-) TO '${OUTPUT_DIR}/candidates_with_contact_${TIMESTAMP}.csv' WITH CSV HEADER;
-SQL
+  ORDER BY aerospace_score DESC"
+
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "\copy ($CONTACT_QUERY) TO '${OUTPUT_DIR}/candidates_with_contact_${TIMESTAMP}.csv' WITH CSV HEADER;"
 
 echo -e "${GREEN}✓${NC} Exported: candidates_with_contact_${TIMESTAMP}.csv"
 
@@ -149,9 +141,7 @@ echo -e "${GREEN}✓${NC} Exported: candidates_with_contact_${TIMESTAMP}.csv"
 # ============================================================================
 echo -e "${YELLOW}[5/5]${NC} Exporting regional summary..."
 
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<SQL
-\copy (
-  SELECT 
+REGIONAL_QUERY="SELECT 
     LEFT(postcode, 2) as region,
     COUNT(*) as total_candidates,
     COUNT(*) FILTER (WHERE tier_classification = 'tier1_candidate') as tier1_count,
@@ -164,9 +154,9 @@ psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<SQL
   FROM aerospace_supplier_candidates
   WHERE postcode IS NOT NULL
   GROUP BY region
-  ORDER BY total_candidates DESC
-) TO '${OUTPUT_DIR}/regional_summary_${TIMESTAMP}.csv' WITH CSV HEADER;
-SQL
+  ORDER BY total_candidates DESC"
+
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "\copy ($REGIONAL_QUERY) TO '${OUTPUT_DIR}/regional_summary_${TIMESTAMP}.csv' WITH CSV HEADER;"
 
 echo -e "${GREEN}✓${NC} Exported: regional_summary_${TIMESTAMP}.csv"
 
