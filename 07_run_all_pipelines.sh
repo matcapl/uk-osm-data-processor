@@ -131,10 +131,10 @@ echo -e "${BLUE}============================================${NC}"
 
 psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<'SQL'
 
--- Drop existing final table
+-- Drop existing table
 DROP TABLE IF EXISTS aerospace_supplier_candidates CASCADE;
 
--- Create final table with identical structure
+-- Create final table
 CREATE TABLE aerospace_supplier_candidates (
   id SERIAL PRIMARY KEY,
   osm_id BIGINT,
@@ -164,38 +164,42 @@ CREATE TABLE aerospace_supplier_candidates (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
--- Insert from all staging tables, prioritizing by geometry type
--- Priority: polygon > point > line > roads
-
+-- Insert from polygon (highest priority)
 INSERT INTO aerospace_supplier_candidates (
   osm_id, source_table, name, operator, aerospace_score, tier_classification,
   confidence_level, phone, email, website, postcode, street_address, city,
   landuse_type, building_type, industrial_type, office_type, description,
   matched_keywords, tags_raw, way, latitude, longitude, geometry
 )
--- Polygons (highest priority - buildings/facilities)
 SELECT 
   osm_id, source_table, name, operator, aerospace_score, tier_classification,
   confidence_level, phone, email, website, postcode, street_address, city,
   landuse_type, building_type, industrial_type, office_type, description,
   matched_keywords, tags_raw, way, latitude, longitude, geometry
-FROM aerospace_candidates_polygon
+FROM aerospace_candidates_polygon;
 
-UNION ALL
-
--- Points (single locations/offices)
+-- Insert from point (exclude duplicates)
+INSERT INTO aerospace_supplier_candidates (
+  osm_id, source_table, name, operator, aerospace_score, tier_classification,
+  confidence_level, phone, email, website, postcode, street_address, city,
+  landuse_type, building_type, industrial_type, office_type, description,
+  matched_keywords, tags_raw, way, latitude, longitude, geometry
+)
 SELECT 
   osm_id, source_table, name, operator, aerospace_score, tier_classification,
   confidence_level, phone, email, website, postcode, street_address, city,
   landuse_type, building_type, industrial_type, office_type, description,
   matched_keywords, tags_raw, way, latitude, longitude, geometry
 FROM aerospace_candidates_point
--- Exclude if same OSM_ID already exists in polygon
-WHERE osm_id NOT IN (SELECT osm_id FROM aerospace_candidates_polygon)
+WHERE osm_id NOT IN (SELECT osm_id FROM aerospace_candidates_polygon);
 
-UNION ALL
-
--- Lines (linear features)
+-- Insert from line (exclude duplicates)
+INSERT INTO aerospace_supplier_candidates (
+  osm_id, source_table, name, operator, aerospace_score, tier_classification,
+  confidence_level, phone, email, website, postcode, street_address, city,
+  landuse_type, building_type, industrial_type, office_type, description,
+  matched_keywords, tags_raw, way, latitude, longitude, geometry
+)
 SELECT 
   osm_id, source_table, name, operator, aerospace_score, tier_classification,
   confidence_level, phone, email, website, postcode, street_address, city,
@@ -206,11 +210,15 @@ WHERE osm_id NOT IN (
   SELECT osm_id FROM aerospace_candidates_polygon 
   UNION 
   SELECT osm_id FROM aerospace_candidates_point
+);
+
+-- Insert from roads (exclude duplicates)
+INSERT INTO aerospace_supplier_candidates (
+  osm_id, source_table, name, operator, aerospace_score, tier_classification,
+  confidence_level, phone, email, website, postcode, street_address, city,
+  landuse_type, building_type, industrial_type, office_type, description,
+  matched_keywords, tags_raw, way, latitude, longitude, geometry
 )
-
-UNION ALL
-
--- Roads (lowest priority)
 SELECT 
   osm_id, source_table, name, operator, aerospace_score, tier_classification,
   confidence_level, phone, email, website, postcode, street_address, city,
@@ -223,24 +231,86 @@ WHERE osm_id NOT IN (
   SELECT osm_id FROM aerospace_candidates_point
   UNION
   SELECT osm_id FROM aerospace_candidates_line
-)
+);
 
-ORDER BY aerospace_score DESC;
-
--- Create indexes on final table
+-- Create indexes
 CREATE INDEX idx_final_score ON aerospace_supplier_candidates(aerospace_score DESC);
 CREATE INDEX idx_final_tier ON aerospace_supplier_candidates(tier_classification);
 CREATE INDEX idx_final_confidence ON aerospace_supplier_candidates(confidence_level);
 CREATE INDEX idx_final_postcode ON aerospace_supplier_candidates(postcode);
 CREATE INDEX idx_final_source ON aerospace_supplier_candidates(source_table);
 CREATE INDEX idx_final_geom ON aerospace_supplier_candidates USING GIST(geometry);
-CREATE INDEX idx_final_name ON aerospace_supplier_candidates USING GIN(to_tsvector('english', name));
 
 -- Add constraints
 ALTER TABLE aerospace_supplier_candidates 
   ADD CONSTRAINT chk_score CHECK (aerospace_score >= 40),
   ADD CONSTRAINT chk_tier CHECK (tier_classification IN 
     ('tier1_candidate', 'tier2_candidate', 'potential_candidate', 'low_probability'));
+
+-- Show summary
+SELECT 
+  'Total Candidates' as metric,
+  COUNT(*)::text as value
+FROM aerospace_supplier_candidates
+
+UNION ALL
+
+SELECT 
+  'From Polygon' as metric,
+  COUNT(*)::text as value
+FROM aerospace_supplier_candidates
+WHERE source_table = 'planet_osm_polygon'
+
+UNION ALL
+
+SELECT 
+  'From Point' as metric,
+  COUNT(*)::text as value
+FROM aerospace_supplier_candidates
+WHERE source_table = 'planet_osm_point'
+
+UNION ALL
+
+SELECT 
+  'From Line' as metric,
+  COUNT(*)::text as value
+FROM aerospace_supplier_candidates
+WHERE source_table = 'planet_osm_line'
+
+UNION ALL
+
+SELECT 
+  'From Roads' as metric,
+  COUNT(*)::text as value
+FROM aerospace_supplier_candidates
+WHERE source_table = 'planet_osm_roads'
+
+UNION ALL
+
+SELECT 
+  'Tier 2 or Better (≥80)' as metric,
+  COUNT(*)::text as value
+FROM aerospace_supplier_candidates
+WHERE aerospace_score >= 80
+
+UNION ALL
+
+SELECT 
+  'Potential (40-79)' as metric,
+  COUNT(*)::text as value
+FROM aerospace_supplier_candidates
+WHERE aerospace_score >= 40 AND aerospace_score < 80;
+
+SELECT 
+  ROW_NUMBER() OVER (ORDER BY aerospace_score DESC) as rank,
+  LEFT(name, 45) as name,
+  aerospace_score as score,
+  tier_classification as tier,
+  source_table as source,
+  postcode
+FROM aerospace_supplier_candidates
+ORDER BY aerospace_score DESC
+LIMIT 20;
 
 SQL
 
@@ -408,3 +478,25 @@ echo "  1. Review candidates: psql -d $DB_NAME"
 echo "  2. Export to CSV: Run export script"
 echo "  3. Validate results: bash test_aerospace_pipelines.sh"
 echo ""
+
+# Optional Clean-up
+# -- Drop filtered/scored views (regenerate anytime)
+
+# psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<'SQL'
+
+# DROP VIEW planet_osm_polygon_aerospace_filtered CASCADE;
+# DROP VIEW planet_osm_polygon_aerospace_scored CASCADE;
+# DROP VIEW planet_osm_point_aerospace_filtered CASCADE;
+# DROP VIEW planet_osm_point_aerospace_scored CASCADE;
+# DROP VIEW planet_osm_line_aerospace_filtered CASCADE;
+# DROP VIEW planet_osm_line_aerospace_scored CASCADE;
+# DROP VIEW planet_osm_roads_aerospace_filtered CASCADE;
+# DROP VIEW planet_osm_roads_aerospace_scored CASCADE;
+
+# SQL
+
+# -- Keep nodes/ways ONLY if doing custom OSM analysis
+# -- Otherwise delete to save 19GB:
+# DROP TABLE planet_osm_nodes CASCADE;
+# DROP TABLE planet_osm_ways CASCADE;
+# DROP TABLE planet_osm_rels CASCADE;
