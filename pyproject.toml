@@ -8,6 +8,7 @@ dependencies = [
     "beautifulsoup4>=4.13.5",
     "geoalchemy2>=0.18.0",
     "geopandas>=1.1.1",
+    "groq>=0.32.0",
     "osmium>=4.1.1",
     "pandas>=2.3.2",
     "psycopg2-binary>=2.9.10",
