@@ -147,7 +147,7 @@ CREATE TABLE aerospace_supplier_candidates (
   phone TEXT,
   email TEXT,
   website TEXT,
-  postcode VARCHAR(20),
+  postcode VARCHAR(50),
   street_address TEXT,
   city TEXT,
   landuse_type TEXT,

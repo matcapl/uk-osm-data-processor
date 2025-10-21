@@ -37,15 +37,15 @@ WHERE
   AND (railway IS NULL OR railway NOT IN ('abandoned', 'disused', 'station', 'halt'))
   AND (waterway IS NULL)
   AND (barrier IS NULL)
-  AND (amenity IS NULL OR amenity NOT IN ('restaurant', 'pub', 'cafe', 'bar', 'parking'))
+  AND (amenity IS NULL OR amenity NOT IN ('restaurant', 'pub', 'cafe', 'bar', 'parking', 'hotel', 'inn'))
   AND (leisure IS NULL)
   AND (tourism IS NULL)
   
   -- OVERRIDE: Keep aerospace/aeroway/industrial features
   OR (
     aeroway IS NOT NULL
-    OR LOWER(COALESCE(name, '')) ~ '(aerospace|aviation|aircraft|airfield|runway|taxiway|apron)'
-    OR LOWER(COALESCE(operator, '')) ~ '(aerospace|aviation|aircraft)'
+    OR LOWER(COALESCE(name, '')) ~ '(aerospace|aviation|aircraft|airfield|runway|taxiway|apron|aero)'
+    OR LOWER(COALESCE(operator, '')) ~ '(aerospace|aviation|aircraft|aero)'
     OR industrial IS NOT NULL
     OR landuse = 'industrial'
   );
@@ -70,24 +70,16 @@ CREATE VIEW planet_osm_line_aerospace_scored AS
 SELECT 
   *,
   (
-    -- AEROWAY features: +100
-    CASE WHEN aeroway IN ('runway', 'taxiway', 'apron') THEN 100 ELSE 0 END +
+    -- AEROWAY features: +10
+    CASE WHEN aeroway IN ('runway', 'taxiway', 'apron') THEN 10 ELSE 0 END +
     CASE WHEN aeroway = 'aerodrome' THEN 80 ELSE 0 END +
     
     -- DIRECT AEROSPACE: +100
-    CASE WHEN LOWER(COALESCE(name, '')) ~ '(aerospace|aviation|aircraft|airfield)' THEN 100 ELSE 0 END +
-    CASE WHEN LOWER(COALESCE(operator, '')) ~ '(aerospace|aviation|aircraft)' THEN 100 ELSE 0 END +
-    
-    -- TIER-1 COMPANIES: +100
-    CASE WHEN LOWER(COALESCE(name, '')) ~ '(airbus|boeing|rolls.royce|bae.systems|leonardo)' THEN 100 ELSE 0 END +
-    
-    -- DEFENSE/MILITARY: +80
-    CASE WHEN LOWER(COALESCE(name, '')) ~ '(defense|defence|military|air.base)' THEN 80 ELSE 0 END +
-    CASE WHEN military IS NOT NULL THEN 80 ELSE 0 END +
-    CASE WHEN landuse = 'military' THEN 80 ELSE 0 END +
+    CASE WHEN LOWER(COALESCE(name, '')) ~ '(aerospace|aero)' THEN 100 ELSE 0 END +
+    CASE WHEN LOWER(COALESCE(operator, '')) ~ '(aerospace|aero)' THEN 100 ELSE 0 END +
     
     -- HIGH-TECH: +70
-    CASE WHEN LOWER(COALESCE(name, '')) ~ '(precision|technology|systems|engineering)' THEN 70 ELSE 0 END +
+    CASE WHEN LOWER(COALESCE(name, '')) ~ '(precision|technology|systems|engineering|manufacturing)' THEN 70 ELSE 0 END +
     CASE WHEN industrial IN ('engineering', 'electronics') THEN 70 ELSE 0 END +
     
     -- INDUSTRIAL: +50
@@ -99,14 +91,11 @@ SELECT
     CASE WHEN man_made IN ('works', 'factory') THEN 40 ELSE 0 END +
     
     -- OFFICE/COMPANY: +30
-    CASE WHEN office IN ('company', 'engineering', 'industrial') THEN 30 ELSE 0 END +
-    
-    -- UK AEROSPACE CLUSTERS: +20
-    CASE WHEN "addr:postcode" ~ '^(BA|BS|GL|DE|PR|YO|CB|RG|SL)' THEN 20 ELSE 0 END +
-    
-    -- CONTACT INFO: +10
-    CASE WHEN website IS NOT NULL THEN 10 ELSE 0 END +
-    CASE WHEN tags ? 'phone' THEN 5 ELSE 0 END
+    CASE WHEN office IN ('company', 'engineering', 'industrial') THEN 30 ELSE 0 END
+
+    -- PENALTY for non-supplier keywords: -80 points
+    - CASE WHEN LOWER(COALESCE(name, '') || ' ' || COALESCE(tags::text, '')) 
+            ~ '(aerobic|anaerobic|club|laboratory)' THEN 80 ELSE 0 END
     
   ) AS aerospace_score
 FROM planet_osm_line_aerospace_filtered

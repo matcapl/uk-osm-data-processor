@@ -67,6 +67,8 @@ echo -e "${GREEN}✓${NC} Exported: all_candidates_${TIMESTAMP}.csv"
 echo -e "${YELLOW}[2/5]${NC} Exporting Tier 1 candidates (≥150)..."
 
 TIER1_QUERY="SELECT 
+    osm_id,
+    source_table,
     name,
     aerospace_score,
     confidence_level,
@@ -93,6 +95,8 @@ echo -e "${GREEN}✓${NC} Exported: tier1_candidates_${TIMESTAMP}.csv"
 echo -e "${YELLOW}[3/5]${NC} Exporting Tier 2 candidates (80-149)..."
 
 TIER2_QUERY="SELECT 
+    osm_id,
+    source_table,
     name,
     aerospace_score,
     confidence_level,
@@ -119,6 +123,8 @@ echo -e "${GREEN}✓${NC} Exported: tier2_candidates_${TIMESTAMP}.csv"
 echo -e "${YELLOW}[4/5]${NC} Exporting candidates with contact info..."
 
 CONTACT_QUERY="SELECT 
+    osm_id,
+    source_table,
     name,
     aerospace_score,
     tier_classification,

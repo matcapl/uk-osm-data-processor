@@ -37,7 +37,7 @@ WHERE
   -- EXCLUDE residential/retail/leisure
   (amenity IS NULL OR amenity NOT IN ('restaurant', 'pub', 'cafe', 'bar', 'fast_food', 
                                        'school', 'hospital', 'bank', 'pharmacy', 'fuel', 
-                                       'parking', 'place_of_worship', 'library'))
+                                       'parking', 'place_of_worship', 'library', 'hotel', 'inn', 'hall', 'village'))
   AND (shop IS NULL)
   AND (tourism IS NULL)
   AND (leisure IS NULL OR leisure NOT IN ('park', 'playground', 'sports_centre', 
@@ -49,9 +49,9 @@ WHERE
   
   -- OVERRIDE: Keep if aerospace keywords present (even if excluded above)
   OR (
-    LOWER(COALESCE(name, '')) ~ '(aerospace|aviation|aircraft|airbus|boeing|rolls.royce|bae.systems|defense|defence|leonardo|thales|safran)'
-    OR LOWER(COALESCE(operator, '')) ~ '(aerospace|aviation|aircraft|defense|defence)'
-    OR LOWER(COALESCE(tags::text, '')) ~ '(aerospace|aviation|aircraft|defense|defence)'
+    LOWER(COALESCE(name, '')) ~ '(aerospace|airbus|boeing|bae.systems|safran|aero)'
+    OR LOWER(COALESCE(operator, '')) ~ '(aerospace|aero)'
+    OR LOWER(COALESCE(tags::text, '')) ~ '(aerospace)'
   );
 
 SQL
@@ -77,27 +77,37 @@ SELECT
   *,
   (
     -- DIRECT AEROSPACE: +100 points
-    CASE WHEN LOWER(COALESCE(name, '')) ~ '(aerospace|aviation|aircraft|avionics)' THEN 100 ELSE 0 END +
-    CASE WHEN LOWER(COALESCE(operator, '')) ~ '(aerospace|aviation|aircraft)' THEN 100 ELSE 0 END +
-    CASE WHEN LOWER(COALESCE(tags::text, '')) ~ 'aerospace|aviation|aircraft' THEN 100 ELSE 0 END +
+    CASE WHEN LOWER(COALESCE(name, '')) ~ '(aerospace|avionics|aero)' THEN 100 ELSE 0 END +
+    CASE WHEN LOWER(COALESCE(operator, '')) ~ '(aerospace|aero)' THEN 100 ELSE 0 END +
+    CASE WHEN LOWER(COALESCE(tags::text, '')) ~ 'aerospace' THEN 100 ELSE 0 END +
     
     -- TIER-1 COMPANIES: +100 points
-    CASE WHEN LOWER(COALESCE(name, '')) ~ '(airbus|boeing|rolls.royce|bae.systems|leonardo|thales|safran|gkn|meggitt|cobham)' THEN 100 ELSE 0 END +
-    
-    -- DEFENSE/MILITARY: +80 points
-    CASE WHEN LOWER(COALESCE(name, '')) ~ '(defense|defence|military|radar|missile|weapons|ballistic)' THEN 80 ELSE 0 END +
-    CASE WHEN military IS NOT NULL THEN 80 ELSE 0 END +
-    CASE WHEN landuse = 'military' THEN 80 ELSE 0 END +
+    CASE WHEN LOWER(COALESCE(name, '')) ~ '(airbus|boeing|rolls.royce|bae.systems|thales|safran|gkn|meggitt|cobham|itp.aero)' THEN 100 ELSE 0 END +
+
+    -- TIER-1 OEM & SUPPLIER COMPANIES: +100 points
+    CASE WHEN LOWER(COALESCE(name, '')) ~ 
+      '(airbus|boeing|lockheed.martin|bae.systems|rolls.royce|rtx|raytheon|collins.aerospace|pratt.whitney|ge.aviation|ge.aerospace|safran|thales|leonardo|northrop.grumman|general.dynamics|honeywell|gkn.aerospace|spirit.aerosystems|meggitt|cobham|itp.aero|parker.hannifin|moog|senior.aerospace|marshall.aerospace|precision.castparts|pcc|triumph.group|woodward|eaton.aerospace|liebherr.aerospace|aar.corp|magellan.aerospace|martin.baker|ultra.electronics|elbit.systems|babcock.international|qinetiq|short.brothers|bombardier|dowty|messier.dowty|westland|agustawestland|transdigm|howmet.aerospace|l3harris|curtiss.wright|crane.aerospace|textron|huntington.ingalls|aerovironment|embraer|cae|standardaero|hexcel|mercury.systems|planet.labs|vse.corp|intuitive.machines|astronics|ducommun|mitsubishi.heavy|sikorsky|gulfstream|bell.textron|mtu.aero|goodrich|eurofighter|cfm.international|general.electric|itp.aero|aim.altitude|sl.engineering|automatic.industrial.machines|general.engineering.treatments)' 
+    THEN 100 ELSE 0 END +
+
+    -- MAJOR AIRCRAFT PROGRAMME NAMES: +50 points
+    CASE WHEN LOWER(COALESCE(name, '')) ~ 
+      '(737.max|787.dreamliner|777x|a320.neo|a350.xwb|a330.neo|f.35|f.22|eurofighter|typhoon|trent.xwb|trent.1000|trent.7000|leap.engine|ge9x|kc.46|ch.47.chinook|p.8.poseidon|a400m|h160|f.15ex|hawk.trainer|type.26|global.hawk|james.webb|stryker|b.21.raider)'
+    THEN 50 ELSE 0 END +
+
+    -- DEFENSE/MILITARY: +50 points
+    CASE WHEN LOWER(COALESCE(name, '')) ~ '(defense|defence|military|radar|missile|weapons|ballistic)' THEN 50 ELSE 0 END +
+    CASE WHEN military IS NOT NULL THEN 50 ELSE 0 END +
+    CASE WHEN landuse = 'military' THEN 50 ELSE 0 END +
     
     -- HIGH-TECH MANUFACTURING: +70 points
-    CASE WHEN LOWER(COALESCE(name, '')) ~ '(precision|advanced|technology|systems|electronics|engineering)' THEN 70 ELSE 0 END +
+    CASE WHEN LOWER(COALESCE(name, '')) ~ '(precision|advanced|technology|systems|electronics|engineering|manufacturing|CNC)' THEN 70 ELSE 0 END +
     CASE WHEN industrial IN ('engineering', 'electronics', 'precision', 'high_tech') THEN 70 ELSE 0 END +
     CASE WHEN office IN ('engineering', 'research', 'technology') THEN 70 ELSE 0 END +
     
-    -- RESEARCH & DEVELOPMENT: +60 points
-    CASE WHEN LOWER(COALESCE(name, '')) ~ '(research|development|laboratory|r&d|institute)' THEN 60 ELSE 0 END +
-    CASE WHEN office = 'research' THEN 60 ELSE 0 END +
-    CASE WHEN amenity IN ('research_institute', 'university') THEN 60 ELSE 0 END +
+    -- RESEARCH & DEVELOPMENT: +5 points
+    CASE WHEN LOWER(COALESCE(name, '')) ~ '(research|development|laboratory|r&d|institute)' THEN 5 ELSE 0 END +
+    CASE WHEN office = 'research' THEN 5 ELSE 0 END +
+    CASE WHEN amenity IN ('research_institute', 'university') THEN 5 ELSE 0 END +
     
     -- MANUFACTURING KEYWORDS: +50 points
     CASE WHEN LOWER(COALESCE(name, '')) ~ '(machining|casting|forging|composite|materials|fabrication|tooling)' THEN 50 ELSE 0 END +
@@ -120,6 +130,10 @@ SELECT
     CASE WHEN tags ? 'phone' OR tags ? 'contact:phone' THEN 10 ELSE 0 END +
     CASE WHEN tags ? 'email' OR tags ? 'contact:email' THEN 5 ELSE 0 END
     
+    -- PENALTY for non-supplier keywords: -80 points
+    - CASE WHEN LOWER(COALESCE(name, '') || ' ' || COALESCE(tags::text, '')) 
+            ~ '(aerobic|anaerobic|club|laboratory)' THEN 80 ELSE 0 END
+     
   ) AS aerospace_score
 FROM planet_osm_polygon_aerospace_filtered
 WHERE 

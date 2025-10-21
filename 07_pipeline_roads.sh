@@ -32,20 +32,14 @@ DROP VIEW IF EXISTS planet_osm_roads_aerospace_filtered CASCADE;
 CREATE VIEW planet_osm_roads_aerospace_filtered AS
 SELECT *
 FROM planet_osm_roads
-WHERE 
-  -- Only keep roads with explicit aerospace/industrial indicators
+WHERE
   (
-    LOWER(COALESCE(name, '')) ~ '(aerospace|aviation|aircraft|airbus|boeing|rolls.royce|bae|industrial.estate|business.park|technology.park)'
-    OR LOWER(COALESCE(operator, '')) ~ '(aerospace|aviation|aircraft)'
-    OR aeroway IS NOT NULL
+    -- 1. Road operated by a known supplier
+    LOWER(COALESCE(tags->'operator','')) ~ '(airbus|boeing|rolls\\.royce|gkn|cobham)' 
+    -- 2. Road in an industrial zone
     OR landuse = 'industrial'
-    OR industrial IS NOT NULL
-    OR LOWER(COALESCE(tags::text, '')) ~ '(aerospace|aviation|aircraft|defense|defence)'
-  )
-  -- Exclude minor roads unless explicitly aerospace-named
-  AND (
-    highway IN ('primary', 'secondary', 'tertiary', 'unclassified', 'residential', 'service')
-    OR LOWER(COALESCE(name, '')) ~ '(aerospace|aviation|aircraft)'
+    -- 3. Private service driveway into works/factory
+    OR (highway = 'service' AND man_made IN ('works','factory'))
   );
 
 SQL
@@ -63,57 +57,33 @@ echo -e "${YELLOW}[STEP 2]${NC} Creating scored view..."
 psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<'SQL'
 
 DROP VIEW IF EXISTS planet_osm_roads_aerospace_scored CASCADE;
-
 CREATE VIEW planet_osm_roads_aerospace_scored AS
-SELECT 
+SELECT
   *,
   (
-    -- AEROWAY: +120 (strong signal)
-    CASE WHEN aeroway IS NOT NULL THEN 120 ELSE 0 END +
-    
-    -- DIRECT AEROSPACE IN NAME: +100
-    CASE WHEN LOWER(COALESCE(name, '')) ~ '(aerospace|aviation|aircraft)' THEN 100 ELSE 0 END +
-    CASE WHEN LOWER(COALESCE(operator, '')) ~ '(aerospace|aviation)' THEN 100 ELSE 0 END +
-    
-    -- TIER-1 COMPANIES: +100
-    CASE WHEN LOWER(COALESCE(name, '')) ~ '(airbus|boeing|rolls.royce|bae.systems|leonardo|thales|safran)' THEN 100 ELSE 0 END +
-    
-    -- INDUSTRIAL/BUSINESS PARKS: +60
-    CASE WHEN LOWER(COALESCE(name, '')) ~ '(industrial.estate|business.park|technology.park|science.park)' THEN 60 ELSE 0 END +
-    CASE WHEN landuse = 'industrial' THEN 60 ELSE 0 END +
-    
-    -- DEFENSE/MILITARY: +80
-    CASE WHEN LOWER(COALESCE(name, '')) ~ '(defense|defence|military|air.base|raf)' THEN 80 ELSE 0 END +
-    CASE WHEN military IS NOT NULL THEN 80 ELSE 0 END +
-    
-    -- ENGINEERING/TECH: +50
-    CASE WHEN LOWER(COALESCE(name, '')) ~ '(engineering|technology|precision|advanced)' THEN 50 ELSE 0 END +
-    CASE WHEN industrial IS NOT NULL THEN 50 ELSE 0 END +
-    
-    -- MANUFACTURING: +40
-    CASE WHEN LOWER(COALESCE(name, '')) ~ '(manufacturing|factory|works)' THEN 40 ELSE 0 END +
-    CASE WHEN man_made IN ('works', 'factory') THEN 40 ELSE 0 END +
-    
-    -- UK AEROSPACE CLUSTERS: +20
-    CASE WHEN "addr:postcode" ~ '^(BA|BS|GL|DE|PR|YO|CB|RG|SL|BH|SO)' THEN 20 ELSE 0 END +
-    
-    -- CONTACT/WEBSITE: +10
-    CASE WHEN website IS NOT NULL THEN 10 ELSE 0 END +
-    CASE WHEN tags ? 'phone' THEN 5 ELSE 0 END
-    
+    -- Aerodrome perimeter/taxiway/runway: +80
+    CASE WHEN aeroway IN ('aerodrome','taxiway','runway') THEN 80 ELSE 0 END
+    -- Named for aerospace or known supplier: +100
+    + CASE WHEN LOWER(COALESCE(name, '')) ~ '(aerospace|airbus|boeing|rolls\\.royce|bae|gkn|cobham)' THEN 100 ELSE 0 END
+    -- Operated by supplier: +80
+    + CASE WHEN LOWER(COALESCE(tags->'operator','')) ~ '(airbus|boeing|rolls\\.royce|gkn|cobham)' THEN 80 ELSE 0 END
+    -- Industrial zone road: +50
+    + CASE WHEN landuse = 'industrial' THEN 50 ELSE 0 END
+    -- Private service driveway: +40
+    + CASE WHEN highway = 'service' AND landuse = 'industrial' THEN 40 ELSE 0 END
+    -- Office/man_made tag: +30
+    + CASE WHEN office IN ('industrial','engineering') OR man_made IN ('works','factory') THEN 30 ELSE 0 END
   ) AS aerospace_score
 FROM planet_osm_roads_aerospace_filtered
-WHERE (
-  name IS NOT NULL 
-  OR aeroway IS NOT NULL 
-  OR landuse = 'industrial'
-  OR industrial IS NOT NULL
-);
+WHERE
+  name IS NOT NULL
+  OR aeroway IN ('aerodrome','taxiway','runway')
+  OR landuse = 'industrial';
 
 SQL
 
 COUNT=$(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -A -c \
-  "SELECT COUNT(*) FROM planet_osm_roads_aerospace_scored WHERE aerospace_score >= 40;")
+  "SELECT COUNT(*) FROM planet_osm_roads_aerospace_scored WHERE aerospace_score >= 10;")
 echo -e "${GREEN}✓${NC} Scored view created: $COUNT candidates"
 echo ""
 
